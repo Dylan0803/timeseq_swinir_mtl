@@ -15,6 +15,8 @@ parent_dir = os.path.dirname(current_dir)
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
+# 在修改 sys.path 之后导入
+
 
 # 设置 matplotlib 后端（Colab 友好）
 matplotlib.use('Agg')  # 非交互式后端，适合保存图片
