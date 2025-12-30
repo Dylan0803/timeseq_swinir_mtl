@@ -1,14 +1,20 @@
+from datasets.h5_dataset import generate_train_valid_test_dataset
+import matplotlib
+import matplotlib.pyplot as plt
+from torch.utils.data import DataLoader
+import torch
 import argparse
 import random
 from typing import Dict, Any, Iterable
 import os
+import sys
 
-import torch
-from torch.utils.data import DataLoader
-import matplotlib.pyplot as plt
-import matplotlib
+# 添加项目根目录到路径，支持从 datasets/ 目录或项目根目录运行
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
 
-from datasets.h5_dataset import generate_train_valid_test_dataset
 
 # 设置 matplotlib 后端（Colab 友好）
 matplotlib.use('Agg')  # 非交互式后端，适合保存图片
