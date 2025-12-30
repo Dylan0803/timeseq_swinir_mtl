@@ -10,19 +10,19 @@ import matplotlib
 
 from datasets.h5_dataset import generate_train_valid_test_dataset
 
-# ÉèÖÃ matplotlib ºó¶Ë£¨Colab ÓÑºÃ£©
-matplotlib.use('Agg')  # ·Ç½»»¥Ê½ºó¶Ë£¬ÊÊºÏ±£´æÍ¼Æ¬
-plt.rcParams['axes.unicode_minus'] = False  # ½â¾ö¸ººÅÏÔÊ¾ÎÊÌâ
-# Ê¹ÓÃÓ¢ÎÄ±êÇ©ÒÔ±ÜÃâÖĞÎÄ×ÖÌåÎÊÌâ
+# è®¾ç½® matplotlib åç«¯ï¼ˆColab å‹å¥½ï¼‰
+matplotlib.use('Agg')  # éäº¤äº’å¼åç«¯ï¼Œé€‚åˆä¿å­˜å›¾ç‰‡
+plt.rcParams['axes.unicode_minus'] = False  # è§£å†³è´Ÿå·æ˜¾ç¤ºé—®é¢˜
+# ä½¿ç”¨è‹±æ–‡æ ‡ç­¾ä»¥é¿å…ä¸­æ–‡å­—ä½“é—®é¢˜
 
 
 def describe_tensor(name: str, tensor: torch.Tensor) -> None:
-    """´òÓ¡µ¥¸öÕÅÁ¿µÄĞÎ×´¡¢dtype¡¢×îĞ¡ÖµºÍ×î´óÖµ¡£"""
+    """æ‰“å°å•ä¸ªå¼ é‡çš„å½¢çŠ¶ã€dtypeã€æœ€å°å€¼å’Œæœ€å¤§å€¼ã€‚"""
     try:
         tensor_min = tensor.min().item() if tensor.numel() > 0 else float("nan")
         tensor_max = tensor.max().item() if tensor.numel() > 0 else float("nan")
-    except Exception as e:  # ¼«¶ËÇé¿öÏÂµÄ±£»¤
-        print(f"[{name}] ¼ÆËã min/max ³ö´í: {e}")
+    except Exception as e:  # æç«¯æƒ…å†µä¸‹çš„ä¿æŠ¤
+        print(f"[{name}] è®¡ç®— min/max å‡ºé”™: {e}")
         tensor_min, tensor_max = float("nan"), float("nan")
 
     print(
@@ -32,19 +32,19 @@ def describe_tensor(name: str, tensor: torch.Tensor) -> None:
 
 
 def print_sample(sample: Dict[str, Any], title: str) -> None:
-    """´òÓ¡Ñù±¾ÖĞÃ¿¸ö key µÄ»ù±¾Í³¼ÆĞÅÏ¢¡£"""
+    """æ‰“å°æ ·æœ¬ä¸­æ¯ä¸ª key çš„åŸºæœ¬ç»Ÿè®¡ä¿¡æ¯ã€‚"""
     print(f"\n===== {title} =====")
     for key, val in sample.items():
         if torch.is_tensor(val):
             describe_tensor(key, val)
         else:
-            print(f"{key}: ·ÇÕÅÁ¿ÀàĞÍ£¬Öµ={val}")
+            print(f"{key}: éå¼ é‡ç±»å‹ï¼Œå€¼={val}")
 
 
 def extract_sim_groups(dataset) -> Iterable:
     """
-    ÌáÈ¡ dataset ¸²¸Çµ½µÄ (wind_group, source_group) ¼¯ºÏ¡£
-    Í¨¹ı index_list -> data_indices »ñÈ¡Ó³Éä£¬È·±£Óë DataLoader Ê¹ÓÃÒ»ÖÂ¡£
+    æå– dataset è¦†ç›–åˆ°çš„ (wind_group, source_group) é›†åˆã€‚
+    é€šè¿‡ index_list -> data_indices è·å–æ˜ å°„ï¼Œç¡®ä¿ä¸ DataLoader ä½¿ç”¨ä¸€è‡´ã€‚
     """
     sim_groups = set()
     for idx_in_list in dataset.index_list:
@@ -54,10 +54,10 @@ def extract_sim_groups(dataset) -> Iterable:
 
 
 def visualize_dataset_split(train_size, valid_size, test_size, output_dir="."):
-    """¿ÉÊÓ»¯Êı¾İ¼¯»®·ÖÇé¿ö"""
+    """å¯è§†åŒ–æ•°æ®é›†åˆ’åˆ†æƒ…å†µ"""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
-    # ±ıÍ¼
+    # é¥¼å›¾
     sizes = [train_size, valid_size, test_size]
     labels = ['Train', 'Valid', 'Test']
     colors = ['#66b3ff', '#99ff99', '#ffcc99']
@@ -67,14 +67,14 @@ def visualize_dataset_split(train_size, valid_size, test_size, output_dir="."):
             autopct='%1.1f%%', shadow=True, startangle=90)
     ax1.set_title('Dataset Split Ratio', fontsize=14, fontweight='bold')
 
-    # Öù×´Í¼
+    # æŸ±çŠ¶å›¾
     bars = ax2.bar(labels, sizes, color=colors, alpha=0.7,
                    edgecolor='black', linewidth=1.5)
     ax2.set_ylabel('Sample Count', fontsize=12)
     ax2.set_title('Dataset Sample Count', fontsize=14, fontweight='bold')
     ax2.grid(axis='y', alpha=0.3)
 
-    # ÔÚÖù×´Í¼ÉÏÌí¼ÓÊıÖµ±êÇ©
+    # åœ¨æŸ±çŠ¶å›¾ä¸Šæ·»åŠ æ•°å€¼æ ‡ç­¾
     for bar, size in zip(bars, sizes):
         height = bar.get_height()
         ax2.text(bar.get_x() + bar.get_width()/2., height,
@@ -85,20 +85,20 @@ def visualize_dataset_split(train_size, valid_size, test_size, output_dir="."):
     output_path = os.path.join(output_dir, 'dataset_split.png')
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()
-    print(f"? Êı¾İ¼¯»®·ÖÍ¼ÒÑ±£´æ: {output_path}")
+    print(f"? æ•°æ®é›†åˆ’åˆ†å›¾å·²ä¿å­˜: {output_path}")
 
 
 def visualize_samples(samples, dataset_type, K, output_dir="."):
-    """¿ÉÊÓ»¯Ñù±¾Êı¾İ£¨LRĞòÁĞºÍHRÍ¼Ïñ£©"""
+    """å¯è§†åŒ–æ ·æœ¬æ•°æ®ï¼ˆLRåºåˆ—å’ŒHRå›¾åƒï¼‰"""
     num_samples = len(samples)
     if num_samples == 0:
         return
 
-    # È·¶¨ÊÇÊ±ĞòÊı¾İ¼¯»¹ÊÇµ¥Ö¡Êı¾İ¼¯
+    # ç¡®å®šæ˜¯æ—¶åºæ•°æ®é›†è¿˜æ˜¯å•å¸§æ•°æ®é›†
     is_seq = 'lr_seq' in samples[0]
 
     if is_seq:
-        # Ê±ĞòÊı¾İ¼¯¿ÉÊÓ»¯
+        # æ—¶åºæ•°æ®é›†å¯è§†åŒ–
         fig = plt.figure(figsize=(16, 4 * num_samples))
 
         for i, sample in enumerate(samples):
@@ -110,7 +110,7 @@ def visualize_samples(samples, dataset_type, K, output_dir="."):
 
             K_actual = lr_seq.shape[0]
 
-            # ÏÔÊ¾ LR ĞòÁĞ£¨Ç°¼¸Ö¡ºÍºó¼¸Ö¡£©
+            # æ˜¾ç¤º LR åºåˆ—ï¼ˆå‰å‡ å¸§å’Œåå‡ å¸§ï¼‰
             num_lr_show = min(6, K_actual)
             for j in range(num_lr_show):
                 ax = plt.subplot(num_samples, num_lr_show + 3,
@@ -122,7 +122,7 @@ def visualize_samples(samples, dataset_type, K, output_dir="."):
                 ax.axis('off')
                 plt.colorbar(im, ax=ax, fraction=0.046)
 
-            # ÏÔÊ¾ HR_t
+            # æ˜¾ç¤º HR_t
             ax = plt.subplot(num_samples, num_lr_show + 3, i *
                              (num_lr_show + 3) + num_lr_show + 1)
             hr_t_frame = hr_t[0] if len(hr_t.shape) == 3 else hr_t
@@ -131,7 +131,7 @@ def visualize_samples(samples, dataset_type, K, output_dir="."):
             ax.axis('off')
             plt.colorbar(im, ax=ax, fraction=0.046)
 
-            # ÏÔÊ¾ HR_{t+1}£¨Èç¹û´æÔÚ£©
+            # æ˜¾ç¤º HR_{t+1}ï¼ˆå¦‚æœå­˜åœ¨ï¼‰
             if hr_tp1 is not None:
                 ax = plt.subplot(num_samples, num_lr_show + 3,
                                  i * (num_lr_show + 3) + num_lr_show + 2)
@@ -141,22 +141,22 @@ def visualize_samples(samples, dataset_type, K, output_dir="."):
                 ax.axis('off')
                 plt.colorbar(im, ax=ax, fraction=0.046)
 
-            # Ìí¼ÓÑù±¾ĞÅÏ¢ÎÄ±¾
+            # æ·»åŠ æ ·æœ¬ä¿¡æ¯æ–‡æœ¬
             if 'source_pos' in sample:
                 source_pos = sample['source_pos'].numpy()
                 info_text = f"Sample {i+1}\nSource: ({source_pos[0]:.3f}, {source_pos[1]:.3f})"
                 if 'wind_vector' in sample:
                     wind = sample['wind_vector'].numpy()
-                    # wind_vector ¿ÉÄÜÊÇ 2D Êı×é (N, 2)£¬È¡Æ½¾ùÖµ»òÏÔÊ¾ĞÎ×´
+                    # wind_vector å¯èƒ½æ˜¯ 2D æ•°ç»„ (N, 2)ï¼Œå–å¹³å‡å€¼æˆ–æ˜¾ç¤ºå½¢çŠ¶
                     if wind.ndim == 2 and wind.shape[0] > 2:
-                        # Èç¹ûÊÇ¿Õ¼ä³¡Êı¾İ£¬ÏÔÊ¾Æ½¾ùÖµºÍĞÎ×´
+                        # å¦‚æœæ˜¯ç©ºé—´åœºæ•°æ®ï¼Œæ˜¾ç¤ºå¹³å‡å€¼å’Œå½¢çŠ¶
                         wind_mean = wind.mean(axis=0)
                         info_text += f"\nWind: mean=({wind_mean[0]:.3f}, {wind_mean[1]:.3f}), shape={wind.shape}"
                     elif wind.ndim == 1 and wind.shape[0] == 2:
-                        # Èç¹ûÊÇ¼òµ¥µÄ 2D ÏòÁ¿
+                        # å¦‚æœæ˜¯ç®€å•çš„ 2D å‘é‡
                         info_text += f"\nWind: ({wind[0]:.3f}, {wind[1]:.3f})"
                     else:
-                        # ÆäËûÇé¿ö£¬Ö»ÏÔÊ¾ĞÎ×´
+                        # å…¶ä»–æƒ…å†µï¼Œåªæ˜¾ç¤ºå½¢çŠ¶
                         info_text += f"\nWind: shape={wind.shape}"
                 plt.figtext(0.02, 0.98 - i * 0.25, info_text, fontsize=9,
                             verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
@@ -168,9 +168,9 @@ def visualize_samples(samples, dataset_type, K, output_dir="."):
             output_dir, f'{dataset_type.lower()}_samples.png')
         plt.savefig(output_path, dpi=150, bbox_inches='tight')
         plt.close()
-        print(f"? {dataset_type} Ñù±¾¿ÉÊÓ»¯ÒÑ±£´æ: {output_path}")
+        print(f"? {dataset_type} æ ·æœ¬å¯è§†åŒ–å·²ä¿å­˜: {output_path}")
     else:
-        # µ¥Ö¡Êı¾İ¼¯¿ÉÊÓ»¯
+        # å•å¸§æ•°æ®é›†å¯è§†åŒ–
         fig = plt.figure(figsize=(12, 4 * num_samples))
 
         for i, sample in enumerate(samples):
@@ -200,16 +200,16 @@ def visualize_samples(samples, dataset_type, K, output_dir="."):
             output_dir, f'{dataset_type.lower()}_samples.png')
         plt.savefig(output_path, dpi=150, bbox_inches='tight')
         plt.close()
-        print(f"? {dataset_type} Ñù±¾¿ÉÊÓ»¯ÒÑ±£´æ: {output_path}")
+        print(f"? {dataset_type} æ ·æœ¬å¯è§†åŒ–å·²ä¿å­˜: {output_path}")
 
 
 def visualize_leakage_check(train_groups, val_groups, test_groups,
                             inter_train_val, inter_train_test, inter_val_test,
                             output_dir="."):
-    """¿ÉÊÓ»¯·ÀĞ¹Â©¼ì²é½á¹û"""
+    """å¯è§†åŒ–é˜²æ³„æ¼æ£€æŸ¥ç»“æœ"""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
-    # ×ó²à£º¼¯ºÏ´óĞ¡ºÍ½»¼¯´óĞ¡
+    # å·¦ä¾§ï¼šé›†åˆå¤§å°å’Œäº¤é›†å¤§å°
     categories = ['Train', 'Valid', 'Test']
     group_sizes = [len(train_groups), len(val_groups), len(test_groups)]
     colors_bar = ['#66b3ff', '#99ff99', '#ffcc99']
@@ -227,8 +227,8 @@ def visualize_leakage_check(train_groups, val_groups, test_groups,
                  f'{size}',
                  ha='center', va='bottom', fontsize=11, fontweight='bold')
 
-    # ÓÒ²à£º½»¼¯´óĞ¡£¨Ó¦¸Ã¶¼ÊÇ0£©
-    intersection_labels = ['train¡Éval', 'train¡Étest', 'val¡Étest']
+    # å³ä¾§ï¼šäº¤é›†å¤§å°ï¼ˆåº”è¯¥éƒ½æ˜¯0ï¼‰
+    intersection_labels = ['trainâˆ©val', 'trainâˆ©test', 'valâˆ©test']
     intersection_sizes = [len(inter_train_val), len(
         inter_train_test), len(inter_val_test)]
     intersection_colors = ['red' if s >
@@ -249,7 +249,7 @@ def visualize_leakage_check(train_groups, val_groups, test_groups,
                  ha='center', va='bottom' if size > 0 else 'top',
                  fontsize=11, fontweight='bold', color='white' if size > 0 else 'black')
 
-    # Ìí¼Ó×´Ì¬ÎÄ±¾
+    # æ·»åŠ çŠ¶æ€æ–‡æœ¬
     if all(s == 0 for s in intersection_sizes):
         status_text = "? No Leakage"
         status_color = 'green'
@@ -265,15 +265,15 @@ def visualize_leakage_check(train_groups, val_groups, test_groups,
     output_path = os.path.join(output_dir, 'leakage_check.png')
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
     plt.close()
-    print(f"? ·ÀĞ¹Â©¼ì²éÍ¼ÒÑ±£´æ: {output_path}")
+    print(f"? é˜²æ³„æ¼æ£€æŸ¥å›¾å·²ä¿å­˜: {output_path}")
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="¼ì²é H5 Êı¾İ¼¯µÄÊ±Ğò/µ¥Ö¡Êı¾İÍêÕûĞÔÓë·ÀĞ¹Â©Çé¿ö"
+        description="æ£€æŸ¥ H5 æ•°æ®é›†çš„æ—¶åº/å•å¸§æ•°æ®å®Œæ•´æ€§ä¸é˜²æ³„æ¼æƒ…å†µ"
     )
-    parser.add_argument("--h5", required=True, help="H5 ÎÄ¼şÂ·¾¶")
-    parser.add_argument("--K", type=int, default=6, help="ÀúÊ·Ö¡Êı K")
+    parser.add_argument("--h5", required=True, help="H5 æ–‡ä»¶è·¯å¾„")
+    parser.add_argument("--K", type=int, default=6, help="å†å²å¸§æ•° K")
     parser.add_argument("--bs", type=int, default=4,
                         help="DataLoader batch size")
     parser.add_argument("--num_workers", type=int,
@@ -282,21 +282,21 @@ def main():
         "--use_seq",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="ÊÇ·ñÊ¹ÓÃÊ±ĞòÊı¾İ¼¯ MultiTaskSeqDataset£¨Ä¬ÈÏ True£¬¿ÉÓÃ --no-use_seq ¹Ø±Õ£©",
+        help="æ˜¯å¦ä½¿ç”¨æ—¶åºæ•°æ®é›† MultiTaskSeqDatasetï¼ˆé»˜è®¤ Trueï¼Œå¯ç”¨ --no-use_seq å…³é—­ï¼‰",
     )
     parser.add_argument(
         "--output_dir",
         type=str,
         default=".",
-        help="¿ÉÊÓ»¯Í¼Æ¬Êä³öÄ¿Â¼£¨Ä¬ÈÏµ±Ç°Ä¿Â¼£©",
+        help="å¯è§†åŒ–å›¾ç‰‡è¾“å‡ºç›®å½•ï¼ˆé»˜è®¤å½“å‰ç›®å½•ï¼‰",
     )
     args = parser.parse_args()
 
-    # ´´½¨Êä³öÄ¿Â¼
+    # åˆ›å»ºè¾“å‡ºç›®å½•
     os.makedirs(args.output_dir, exist_ok=True)
 
-    # 1) ¹¹½¨Êı¾İ¼¯
-    print("=== ¼ÓÔØÊı¾İ¼¯ ===")
+    # 1) æ„å»ºæ•°æ®é›†
+    print("=== åŠ è½½æ•°æ®é›† ===")
     train_dataset, valid_dataset, test_dataset = generate_train_valid_test_dataset(
         args.h5,
         K=args.K,
@@ -311,19 +311,19 @@ def main():
     print(f"Valid size: {valid_size}")
     print(f"Test size:  {test_size}")
 
-    # ¿ÉÊÓ»¯Êı¾İ¼¯»®·Ö
-    print("\n=== Éú³ÉÊı¾İ¼¯»®·Ö¿ÉÊÓ»¯ ===")
+    # å¯è§†åŒ–æ•°æ®é›†åˆ’åˆ†
+    print("\n=== ç”Ÿæˆæ•°æ®é›†åˆ’åˆ†å¯è§†åŒ– ===")
     visualize_dataset_split(train_size, valid_size, test_size, args.output_dir)
 
-    # 2) Ëæ»ú³éÈ¡ train_dataset µÄÑù±¾²¢´òÓ¡Í³¼Æ
+    # 2) éšæœºæŠ½å– train_dataset çš„æ ·æœ¬å¹¶æ‰“å°ç»Ÿè®¡
     num_samples = min(2, len(train_dataset))
     if num_samples == 0:
-        print("Train ¼¯Îª¿Õ£¬Ìø¹ıÑù±¾¼ì²é¡£")
+        print("Train é›†ä¸ºç©ºï¼Œè·³è¿‡æ ·æœ¬æ£€æŸ¥ã€‚")
     else:
-        print("\n=== Ëæ»úÑù±¾¼ì²é ===")
+        print("\n=== éšæœºæ ·æœ¬æ£€æŸ¥ ===")
         indices = random.sample(range(len(train_dataset)), k=num_samples)
         for i, sample_idx in enumerate(indices):
-            # È¡ data_info ±ãÓÚÔÚÒì³£Ê±´òÓ¡
+            # å– data_info ä¾¿äºåœ¨å¼‚å¸¸æ—¶æ‰“å°
             idx_in_file = train_dataset.index_list[sample_idx]
             data_info = train_dataset.data_indices[idx_in_file]
             try:
@@ -336,24 +336,24 @@ def main():
                     f"t/time_step={data_info.get('t', data_info.get('time_step'))}"
                 )
                 raise
-            print_sample(sample, f"Train Ñù±¾ {i} (idx={sample_idx})")
+            print_sample(sample, f"Train æ ·æœ¬ {i} (idx={sample_idx})")
 
-        # ¿ÉÊÓ»¯Ñù±¾
-        print("\n=== Éú³ÉÑù±¾¿ÉÊÓ»¯ ===")
+        # å¯è§†åŒ–æ ·æœ¬
+        print("\n=== ç”Ÿæˆæ ·æœ¬å¯è§†åŒ– ===")
         samples_to_visualize = []
         for sample_idx in indices:
             try:
                 sample = train_dataset[sample_idx]
                 samples_to_visualize.append(sample)
             except Exception as e:
-                print(f"Ìø¹ıÑù±¾ {sample_idx} µÄ¿ÉÊÓ»¯: {e}")
+                print(f"è·³è¿‡æ ·æœ¬ {sample_idx} çš„å¯è§†åŒ–: {e}")
         if samples_to_visualize:
             visualize_samples(samples_to_visualize, "Train",
                               args.K, args.output_dir)
 
-    # 3) DataLoader batch ¼ì²é
+    # 3) DataLoader batch æ£€æŸ¥
     if len(train_dataset) > 0:
-        print("\n=== DataLoader Åú´Î¼ì²é ===")
+        print("\n=== DataLoader æ‰¹æ¬¡æ£€æŸ¥ ===")
         loader = DataLoader(
             train_dataset,
             batch_size=args.bs,
@@ -367,15 +367,15 @@ def main():
                 if torch.is_tensor(val):
                     print(f"{key}: shape={tuple(val.shape)}, dtype={val.dtype}")
                 else:
-                    print(f"{key}: ·ÇÕÅÁ¿ÀàĞÍ£¬ÖµÀàĞÍ={type(val)}")
+                    print(f"{key}: éå¼ é‡ç±»å‹ï¼Œå€¼ç±»å‹={type(val)}")
         except KeyError as e:
-            print("DataLoader µü´úÊ±³öÏÖ KeyError£¬Çë¼ì²éÊı¾İ¼ü£º", e)
+            print("DataLoader è¿­ä»£æ—¶å‡ºç° KeyErrorï¼Œè¯·æ£€æŸ¥æ•°æ®é”®ï¼š", e)
             raise
         except StopIteration:
-            print("DataLoader Î´·µ»ØÈÎºÎÅú´Î¡£")
+            print("DataLoader æœªè¿”å›ä»»ä½•æ‰¹æ¬¡ã€‚")
 
-    # 4) ·ÀĞ¹Â©¼ì²é£º½»¼¯±ØĞëÎª 0
-    print("\n=== ·ÀĞ¹Â©¼ì²é ===")
+    # 4) é˜²æ³„æ¼æ£€æŸ¥ï¼šäº¤é›†å¿…é¡»ä¸º 0
+    print("\n=== é˜²æ³„æ¼æ£€æŸ¥ ===")
     train_groups = extract_sim_groups(train_dataset)
     val_groups = extract_sim_groups(valid_dataset)
     test_groups = extract_sim_groups(test_dataset)
@@ -384,28 +384,28 @@ def main():
     inter_train_test = train_groups & test_groups
     inter_val_test = val_groups & test_groups
 
-    print(f"|train ¡É val|  = {len(inter_train_val)}")
-    print(f"|train ¡É test| = {len(inter_train_test)}")
-    print(f"|val ¡É test|  = {len(inter_val_test)}")
+    print(f"|train âˆ© val|  = {len(inter_train_val)}")
+    print(f"|train âˆ© test| = {len(inter_train_test)}")
+    print(f"|val âˆ© test|  = {len(inter_val_test)}")
 
     if inter_train_val or inter_train_test or inter_val_test:
-        print("?? ¾¯¸æ£ºÊı¾İ»®·Ö´æÔÚÖØµş£¡")
+        print("?? è­¦å‘Šï¼šæ•°æ®åˆ’åˆ†å­˜åœ¨é‡å ï¼")
         if inter_train_val:
-            print("  ÖØµş train¡Éval:", sorted(inter_train_val))
+            print("  é‡å  trainâˆ©val:", sorted(inter_train_val))
         if inter_train_test:
-            print("  ÖØµş train¡Étest:", sorted(inter_train_test))
+            print("  é‡å  trainâˆ©test:", sorted(inter_train_test))
         if inter_val_test:
-            print("  ÖØµş val¡Étest:", sorted(inter_val_test))
+            print("  é‡å  valâˆ©test:", sorted(inter_val_test))
     else:
-        print("? ÎŞĞ¹Â©£¬Êı¾İ»®·Ö»¥³â¡£")
+        print("? æ— æ³„æ¼ï¼Œæ•°æ®åˆ’åˆ†äº’æ–¥ã€‚")
 
-    # ¿ÉÊÓ»¯·ÀĞ¹Â©¼ì²é½á¹û
-    print("\n=== Éú³É·ÀĞ¹Â©¼ì²é¿ÉÊÓ»¯ ===")
+    # å¯è§†åŒ–é˜²æ³„æ¼æ£€æŸ¥ç»“æœ
+    print("\n=== ç”Ÿæˆé˜²æ³„æ¼æ£€æŸ¥å¯è§†åŒ– ===")
     visualize_leakage_check(train_groups, val_groups, test_groups,
                             inter_train_val, inter_train_test, inter_val_test,
                             args.output_dir)
 
-    print(f"\n? ËùÓĞ¿ÉÊÓ»¯Í¼Æ¬ÒÑ±£´æµ½: {args.output_dir}")
+    print(f"\n? æ‰€æœ‰å¯è§†åŒ–å›¾ç‰‡å·²ä¿å­˜åˆ°: {args.output_dir}")
 
 
 if __name__ == "__main__":
