@@ -85,7 +85,6 @@ class MultiTaskDataset(Dataset):
         - hr_tensor: 高分辨率数据 [1, H, W]，值范围[0,1]
         - source_pos: 泄漏源位置真值 [2]，值范围[0,1]
         - hr_max_pos: HR中浓度最高值的位置 [2]，值范围[0,1]
-        - wind_vector: 风场向量 [2]，值范围[-1,1]
         """
         try:
             idx_in_file = self.index_list[idx]
@@ -115,10 +114,10 @@ class MultiTaskDataset(Dataset):
             source_pos = source_pos / (width - 1)
             hr_max_pos = hr_max_pos / (width - 1)
 
-            # 读取风场信息
-            wind_velocity = wind_group['velocity'][:]  # 读取风场速度
-            # 归一化风场向量到[-1,1]范围
-            wind_vector = wind_velocity / np.max(np.abs(wind_velocity))
+            # 读取风场信息（已禁用，训练用不上）
+            # wind_velocity = wind_group['velocity'][:]  # 读取风场速度
+            # # 归一化风场向量到[-1,1]范围
+            # wind_vector = wind_velocity / np.max(np.abs(wind_velocity))
 
             # 增加通道维度
             if len(lr.shape) == 2:
@@ -131,14 +130,14 @@ class MultiTaskDataset(Dataset):
             hr_tensor = torch.tensor(hr, dtype=torch.float32)
             source_pos_tensor = torch.tensor(source_pos, dtype=torch.float32)
             hr_max_pos_tensor = torch.tensor(hr_max_pos, dtype=torch.float32)
-            wind_vector_tensor = torch.tensor(wind_vector, dtype=torch.float32)
+            # wind_vector_tensor = torch.tensor(wind_vector, dtype=torch.float32)  # 已禁用
 
             return {
                 'lr': lr_tensor,          # 输入数据，已归一化到[0,1]
                 'hr': hr_tensor,          # 超分辨率任务的目标，已归一化到[0,1]
                 'source_pos': source_pos_tensor,  # 泄漏源位置真值，已归一化到[0,1]
                 'hr_max_pos': hr_max_pos_tensor,  # HR中浓度最高位置，已归一化到[0,1]
-                'wind_vector': wind_vector_tensor  # 风场向量，已归一化到[-1,1]
+                # 'wind_vector': wind_vector_tensor  # 风场向量，已禁用（训练用不上）
             }
         except Exception as e:
             print(f"错误：处理索引 {idx} 时发生错误: {str(e)}")
@@ -160,7 +159,6 @@ class MultiTaskSeqDataset(Dataset):
     - source_pos: shape = (2,), float32 [0,1]
     - hr_max_pos_t: shape = (2,), float32 [0,1]
     - hr_max_pos_tp1: shape = (2,), float32 [0,1]
-    - wind_vector: shape = (2,), float32 [-1,1]
     """
 
     def __init__(self, dataset_file_name, index_list=None, K=6, shuffle=True, lazy_open=False, return_single=False):
@@ -258,7 +256,6 @@ class MultiTaskSeqDataset(Dataset):
         - source_pos: (2,), float32 [0,1] - 泄漏源位置
         - hr_max_pos_t: (2,), float32 [0,1] - HR_t 的最大值位置
         - hr_max_pos_tp1: (2,), float32 [0,1] - HR_{t+1} 的最大值位置
-        - wind_vector: (2,), float32 [-1,1] - 风场向量
         """
         try:
             idx_in_file = self.index_list[idx]
@@ -326,12 +323,12 @@ class MultiTaskSeqDataset(Dataset):
             hr_max_pos_t = hr_max_pos_t / (width - 1)
             hr_max_pos_tp1 = hr_max_pos_tp1 / (width - 1)
 
-            # 读取风场信息
-            if 'velocity' not in wind_group:
-                raise KeyError(f"缺少键 velocity in {data_info['wind_group']}")
-            wind_velocity = wind_group['velocity'][:]  # 读取风场速度
-            # 归一化风场向量到[-1,1]范围
-            wind_vector = wind_velocity / np.max(np.abs(wind_velocity))
+            # 读取风场信息（已禁用，训练用不上）
+            # if 'velocity' not in wind_group:
+            #     raise KeyError(f"缺少键 velocity in {data_info['wind_group']}")
+            # wind_velocity = wind_group['velocity'][:]  # 读取风场速度
+            # # 归一化风场向量到[-1,1]范围
+            # wind_vector = wind_velocity / np.max(np.abs(wind_velocity))
 
             # 增加通道维度
             # lr_seq: (K, h_lr, w_lr) -> (K, 1, h_lr, w_lr)
@@ -353,7 +350,7 @@ class MultiTaskSeqDataset(Dataset):
                 hr_max_pos_t, dtype=torch.float32)
             hr_max_pos_tp1_tensor = torch.tensor(
                 hr_max_pos_tp1, dtype=torch.float32)
-            wind_vector_tensor = torch.tensor(wind_vector, dtype=torch.float32)
+            # wind_vector_tensor = torch.tensor(wind_vector, dtype=torch.float32)  # 已禁用
 
             result = {
                 # 历史 K 帧 LR 序列，shape: (K, 1, h_lr, w_lr)
@@ -367,7 +364,7 @@ class MultiTaskSeqDataset(Dataset):
                 'hr_max_pos_t': hr_max_pos_t_tensor,
                 # HR_{t+1} 中浓度最高位置，shape: (2,)
                 'hr_max_pos_tp1': hr_max_pos_tp1_tensor,
-                'wind_vector': wind_vector_tensor  # 风场向量，shape: (2,)
+                # 'wind_vector': wind_vector_tensor  # 风场向量，已禁用（训练用不上）
             }
 
             # 如果 return_single=True，只返回单帧（调试用）
