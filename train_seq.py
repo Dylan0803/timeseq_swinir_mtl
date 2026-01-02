@@ -218,8 +218,36 @@ def train_model(model, train_loader, valid_loader, args):
         best_valid_loss = ckpt["best_valid_loss"]
         print(f"Resuming from epoch {start_epoch}")
 
-    # only warn once if pred enabled but model not returning it
-    warned_pred_missing = False
+    # ========= One-batch sanity check =========
+    print("\n" + "="*60)
+    print("One-batch sanity check before training...")
+    print("="*60)
+    model.eval()
+    with torch.no_grad():
+        sample_batch = next(iter(train_loader))
+        if args.use_seq:
+            lr_seq = sample_batch["lr_seq"].to(device)
+            lr = lr_seq[:, -1]  # (B,1,16,16)
+        else:
+            lr = sample_batch["lr"].to(device)
+
+        out = model(lr)
+        sr_out, gsl_out, pred_out = out
+
+        print(f"✓ Input shape: {lr.shape}")
+        print(f"✓ sr_out.shape: {sr_out.shape} (expected: (bs,1,96,96))")
+        print(f"✓ pred_out.shape: {pred_out.shape} (expected: (bs,1,96,96))")
+        print(f"✓ gsl_out.shape: {gsl_out.shape} (expected: (bs,2))")
+
+        assert sr_out.shape[1:] == (
+            1, 96, 96), f"sr_out shape mismatch: {sr_out.shape}"
+        assert pred_out.shape[1:] == (
+            1, 96, 96), f"pred_out shape mismatch: {pred_out.shape}"
+        assert gsl_out.shape[1:] == (
+            2,), f"gsl_out shape mismatch: {gsl_out.shape}"
+
+        print("✓ All shapes correct! Starting training...\n")
+    model.train()
 
     for epoch in range(start_epoch, args.num_epochs):
         # -------- train --------
@@ -250,33 +278,21 @@ def train_model(model, train_loader, valid_loader, args):
             optimizer.zero_grad()
 
             out = model(lr)
-            # 兼容：旧模型返回 (sr, gsl)
-            if isinstance(out, (tuple, list)) and len(out) == 2:
-                sr_out, gsl_out = out
-                pred_out = None
-            # 未来你改模型后：支持 (sr, pred, gsl)
-            elif isinstance(out, (tuple, list)) and len(out) == 3:
-                sr_out, pred_out, gsl_out = out
-            else:
-                raise RuntimeError(
-                    "Model output format unexpected. Expect (sr,gsl) or (sr,pred,gsl).")
+            # 模型现在返回 (sr_out, gsl_out, pred_out)
+            sr_out, gsl_out, pred_out = out
 
             sr_loss = sr_criterion(sr_out, hr_t)
             gsl_loss = gsl_criterion(gsl_out, source_pos)
 
             loss = args.sr_weight * sr_loss + args.gsl_weight * gsl_loss
 
-            # pred task (optional)
+            # pred task (仅当 --enable_pred 开启时计算)
             if args.enable_pred and args.use_seq:
-                if pred_out is None:
-                    if not warned_pred_missing:
-                        print("\n[WARN] --enable_pred is ON but model does not return pred_out. "
-                              "Skipping Pred@t+1 loss. (This warning prints once.)\n")
-                        warned_pred_missing = True
-                else:
-                    pred_loss = pred_criterion(pred_out, hr_tp1)
-                    loss = loss + args.pred_weight * pred_loss
-                    pred_loss_sum += pred_loss.item()
+                pred_loss = pred_criterion(pred_out, hr_tp1)
+                loss = loss + args.pred_weight * pred_loss
+                pred_loss_sum += pred_loss.item()
+            else:
+                pred_loss = torch.tensor(0.0, device=device)
 
             loss.backward()
             optimizer.step()
@@ -290,8 +306,10 @@ def train_model(model, train_loader, valid_loader, args):
                 "sr": f"{sr_loss.item():.4f}",
                 "gsl": f"{gsl_loss.item():.4f}",
             }
-            if args.enable_pred and args.use_seq and pred_out is not None:
+            if args.enable_pred and args.use_seq:
                 postfix["pred"] = f"{pred_loss.item():.4f}"
+            else:
+                postfix["pred"] = "0.0"
             pbar.set_postfix(postfix)
 
         n_train = len(train_loader)
@@ -325,23 +343,19 @@ def train_model(model, train_loader, valid_loader, args):
                     source_pos = batch["source_pos"].to(device)
 
                 out = model(lr)
-                if isinstance(out, (tuple, list)) and len(out) == 2:
-                    sr_out, gsl_out = out
-                    pred_out = None
-                elif isinstance(out, (tuple, list)) and len(out) == 3:
-                    sr_out, pred_out, gsl_out = out
-                else:
-                    raise RuntimeError(
-                        "Model output format unexpected. Expect (sr,gsl) or (sr,pred,gsl).")
+                # 模型现在返回 (sr_out, gsl_out, pred_out)
+                sr_out, gsl_out, pred_out = out
 
                 sr_loss = sr_criterion(sr_out, hr_t)
                 gsl_loss = gsl_criterion(gsl_out, source_pos)
                 loss = args.sr_weight * sr_loss + args.gsl_weight * gsl_loss
 
-                if args.enable_pred and args.use_seq and pred_out is not None:
+                if args.enable_pred and args.use_seq:
                     pred_loss = pred_criterion(pred_out, hr_tp1)
                     loss = loss + args.pred_weight * pred_loss
                     pred_loss_sum += pred_loss.item()
+                else:
+                    pred_loss = torch.tensor(0.0, device=device)
 
                 total_loss_sum += loss.item()
                 sr_loss_sum += sr_loss.item()
@@ -352,8 +366,10 @@ def train_model(model, train_loader, valid_loader, args):
                     "sr": f"{sr_loss.item():.4f}",
                     "gsl": f"{gsl_loss.item():.4f}",
                 }
-                if args.enable_pred and args.use_seq and pred_out is not None:
+                if args.enable_pred and args.use_seq:
                     postfix["pred"] = f"{pred_loss.item():.4f}"
+                else:
+                    postfix["pred"] = "0.0"
                 pbar.set_postfix(postfix)
 
         n_valid = len(valid_loader)
