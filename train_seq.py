@@ -226,15 +226,17 @@ def train_model(model, train_loader, valid_loader, args):
     with torch.no_grad():
         sample_batch = next(iter(train_loader))
         if args.use_seq:
-            lr_seq = sample_batch["lr_seq"].to(device)
-            lr = lr_seq[:, -1]  # (B,1,16,16)
+            inp = sample_batch["lr_seq"].to(device)  # (B,K,1,16,16)
+            print(
+                f"✓ Input shape (seq): {inp.shape} (expected: (bs,K,1,16,16))")
         else:
-            lr = sample_batch["lr"].to(device)
+            inp = sample_batch["lr"].to(device)  # (B,1,16,16)
+            print(
+                f"✓ Input shape (single): {inp.shape} (expected: (bs,1,16,16))")
 
-        out = model(lr)
+        out = model(inp)
         sr_out, gsl_out, pred_out = out
 
-        print(f"✓ Input shape: {lr.shape}")
         print(f"✓ sr_out.shape: {sr_out.shape} (expected: (bs,1,96,96))")
         print(f"✓ pred_out.shape: {pred_out.shape} (expected: (bs,1,96,96))")
         print(f"✓ gsl_out.shape: {gsl_out.shape} (expected: (bs,2))")
@@ -262,22 +264,19 @@ def train_model(model, train_loader, valid_loader, args):
         for batch in pbar:
             # seq or single
             if args.use_seq:
-                lr_seq = batch["lr_seq"].to(device)          # (B,K,1,16,16)
+                inp = batch["lr_seq"].to(device)          # (B,K,1,16,16)
                 hr_t = batch["hr_t"].to(device)              # (B,1,96,96)
                 hr_tp1 = batch["hr_tp1"].to(device)          # (B,1,96,96)
                 source_pos = batch["source_pos"].to(device)  # (B,2)
-
-                # baseline：只用最后一帧（先跑通）
-                lr = lr_seq[:, -1]                           # (B,1,16,16)
             else:
-                lr = batch["lr"].to(device)
-                hr_t = batch["hr"].to(device)
+                inp = batch["lr"].to(device)                 # (B,1,16,16)
+                hr_t = batch["hr"].to(device)                # (B,1,96,96)
                 hr_tp1 = None
-                source_pos = batch["source_pos"].to(device)
+                source_pos = batch["source_pos"].to(device)  # (B,2)
 
             optimizer.zero_grad()
 
-            out = model(lr)
+            out = model(inp)
             # 模型现在返回 (sr_out, gsl_out, pred_out)
             sr_out, gsl_out, pred_out = out
 
@@ -286,8 +285,8 @@ def train_model(model, train_loader, valid_loader, args):
 
             loss = args.sr_weight * sr_loss + args.gsl_weight * gsl_loss
 
-            # pred task (仅当 --enable_pred 开启时计算)
-            if args.enable_pred and args.use_seq:
+            # pred task (仅当 --enable_pred 开启且 hr_tp1 存在时计算)
+            if args.enable_pred and hr_tp1 is not None:
                 pred_loss = pred_criterion(pred_out, hr_tp1)
                 loss = loss + args.pred_weight * pred_loss
                 pred_loss_sum += pred_loss.item()
@@ -306,7 +305,7 @@ def train_model(model, train_loader, valid_loader, args):
                 "sr": f"{sr_loss.item():.4f}",
                 "gsl": f"{gsl_loss.item():.4f}",
             }
-            if args.enable_pred and args.use_seq:
+            if args.enable_pred and hr_tp1 is not None:
                 postfix["pred"] = f"{pred_loss.item():.4f}"
             else:
                 postfix["pred"] = "0.0"
@@ -331,18 +330,17 @@ def train_model(model, train_loader, valid_loader, args):
         with torch.no_grad():
             for batch in pbar:
                 if args.use_seq:
-                    lr_seq = batch["lr_seq"].to(device)
-                    hr_t = batch["hr_t"].to(device)
-                    hr_tp1 = batch["hr_tp1"].to(device)
-                    source_pos = batch["source_pos"].to(device)
-                    lr = lr_seq[:, -1]
+                    inp = batch["lr_seq"].to(device)          # (B,K,1,16,16)
+                    hr_t = batch["hr_t"].to(device)              # (B,1,96,96)
+                    hr_tp1 = batch["hr_tp1"].to(device)          # (B,1,96,96)
+                    source_pos = batch["source_pos"].to(device)  # (B,2)
                 else:
-                    lr = batch["lr"].to(device)
-                    hr_t = batch["hr"].to(device)
+                    inp = batch["lr"].to(device)                 # (B,1,16,16)
+                    hr_t = batch["hr"].to(device)                # (B,1,96,96)
                     hr_tp1 = None
-                    source_pos = batch["source_pos"].to(device)
+                    source_pos = batch["source_pos"].to(device)  # (B,2)
 
-                out = model(lr)
+                out = model(inp)
                 # 模型现在返回 (sr_out, gsl_out, pred_out)
                 sr_out, gsl_out, pred_out = out
 
@@ -350,7 +348,7 @@ def train_model(model, train_loader, valid_loader, args):
                 gsl_loss = gsl_criterion(gsl_out, source_pos)
                 loss = args.sr_weight * sr_loss + args.gsl_weight * gsl_loss
 
-                if args.enable_pred and args.use_seq:
+                if args.enable_pred and hr_tp1 is not None:
                     pred_loss = pred_criterion(pred_out, hr_tp1)
                     loss = loss + args.pred_weight * pred_loss
                     pred_loss_sum += pred_loss.item()
@@ -366,7 +364,7 @@ def train_model(model, train_loader, valid_loader, args):
                     "sr": f"{sr_loss.item():.4f}",
                     "gsl": f"{gsl_loss.item():.4f}",
                 }
-                if args.enable_pred and args.use_seq:
+                if args.enable_pred and hr_tp1 is not None:
                     postfix["pred"] = f"{pred_loss.item():.4f}"
                 else:
                     postfix["pred"] = "0.0"

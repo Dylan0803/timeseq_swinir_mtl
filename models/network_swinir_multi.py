@@ -684,6 +684,17 @@ class SwinIRMulti(nn.Module):
         # 浅层特征提取
         self.conv_first = nn.Conv2d(in_chans, embed_dim, 3, 1, 1)
 
+        # 时序融合模块（Temporal Attention - 帧权重融合）
+        # 用于从每帧浅层特征提取 score，然后 softmax 得到权重
+        self.temporal_pool = nn.AdaptiveAvgPool2d(1)  # 全局平均池化
+        hidden_dim = max(1, embed_dim // 4)  # 确保至少为1
+        self.temporal_fc = nn.Sequential(
+            nn.Linear(embed_dim, hidden_dim),
+            nn.GELU(),
+            nn.Linear(hidden_dim, 1)
+        )
+        self.debug_return_alpha = False  # 调试标志，默认不返回 alpha
+
         # 深层特征提取
         self.num_layers = len(depths)
         self.ape = ape
@@ -851,6 +862,45 @@ class SwinIRMulti(nn.Module):
         x = F.pad(x, (0, mod_pad_w, 0, mod_pad_h), 'reflect')
         return x
 
+    def fuse_sequence(self, lr_seq):
+        """
+        时序融合函数：使用帧权重融合 K 帧 LR 序列
+
+        参数：
+        lr_seq: (B, K, 1, H, W) - 历史 K 帧 LR 序列
+
+        返回：
+        fused: (B, embed_dim, H, W) - 融合后的特征
+        alpha: (B, K) - 帧权重（可选，用于调试）
+        """
+        B, K, C, H, W = lr_seq.shape
+        # 对每帧做 conv_first 得到特征
+        # 将 (B, K, 1, H, W) 重塑为 (B*K, 1, H, W)
+        lr_seq_flat = lr_seq.view(B * K, C, H, W)
+        # 通过 conv_first 得到每帧特征 (B*K, embed_dim, H, W)
+        feat_k = self.conv_first(lr_seq_flat)  # (B*K, embed_dim, H, W)
+
+        # 计算每帧的 score
+        # 使用全局平均池化 + FC 得到 score
+        pooled = self.temporal_pool(feat_k)  # (B*K, embed_dim, 1, 1)
+        pooled = pooled.squeeze(-1).squeeze(-1)  # (B*K, embed_dim)
+        scores = self.temporal_fc(pooled)  # (B*K, 1)
+        scores = scores.view(B, K)  # (B, K)
+
+        # Softmax 得到权重 alpha
+        alpha = F.softmax(scores, dim=1)  # (B, K)
+
+        # 将 feat_k 重塑回 (B, K, embed_dim, H, W)
+        feat_k = feat_k.view(B, K, self.embed_dim, H, W)
+
+        # 加权融合：sum_k alpha[:,k] * feat_k[:,k]
+        # alpha: (B, K) -> (B, K, 1, 1, 1) 用于广播
+        # (B, K, 1, 1, 1)
+        alpha_expanded = alpha.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+        fused = (feat_k * alpha_expanded).sum(dim=1)  # (B, embed_dim, H, W)
+
+        return fused, alpha
+
     def forward_features(self, x):
         x_size = (x.shape[2], x.shape[3])
         x = self.patch_embed(x)
@@ -867,14 +917,32 @@ class SwinIRMulti(nn.Module):
         return x
 
     def forward(self, x):
-        H, W = x.shape[2:]
-        x = self.check_image_size(x)
+        # 判断输入维度：4维(单帧) 或 5维(序列)
+        is_sequence = len(x.shape) == 5
 
-        # 浅层特征提取
-        x = self.conv_first(x)
+        if is_sequence:
+            # 序列输入: (B, K, 1, H, W)
+            B, K, C, H, W = x.shape
+            # 记录原始尺寸（用于后续裁剪）
+            orig_H, orig_W = H, W
+            # 使用时序融合
+            x0, alpha = self.fuse_sequence(x)  # x0: (B, embed_dim, H, W)
+            # 保存 alpha 用于调试（如果需要）
+            if self.debug_return_alpha:
+                self._last_alpha = alpha
+        else:
+            # 单帧输入: (B, 1, H, W)
+            H, W = x.shape[2:]
+            orig_H, orig_W = H, W
+            x = self.check_image_size(x)
+            # 浅层特征提取
+            x0 = self.conv_first(x)  # (B, embed_dim, H, W)
+
+        # 确保 x0 的尺寸符合 window_size 要求
+        x0 = self.check_image_size(x0)
 
         # 共享特征提取
-        shared_features = self.conv_after_body(self.forward_features(x)) + x
+        shared_features = self.conv_after_body(self.forward_features(x0)) + x0
 
         # SR分支 - 超分辨率重建（监督 hr_t）
         if self.upsampler == 'nearest+conv':
@@ -920,8 +988,9 @@ class SwinIRMulti(nn.Module):
         gsl_out = self.gsl_branch(shared_features)
 
         # 裁剪SR和Pred输出到正确大小
-        sr_out = sr_out[:, :, :H*self.upscale, :W*self.upscale]
-        pred_out = pred_out[:, :, :H*self.upscale, :W*self.upscale]
+        # 使用原始尺寸 orig_H, orig_W（在 check_image_size 之前）
+        sr_out = sr_out[:, :, :orig_H*self.upscale, :orig_W*self.upscale]
+        pred_out = pred_out[:, :, :orig_H*self.upscale, :orig_W*self.upscale]
 
         return sr_out, gsl_out, pred_out
 
