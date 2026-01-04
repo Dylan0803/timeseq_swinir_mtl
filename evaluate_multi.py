@@ -1,30 +1,25 @@
-from models.network_swinir_multi_gdm import SwinIRMulti as SwinIRMultiGDM
+"""
+【已废弃】旧的评估脚本 - 请使用 eval_seq.py 替代
+
+此脚本包含多个已废弃的模型类型，不再维护。
+对于时序模型评估，请使用：
+    python eval_seq.py --model_path <path> --data_path <path> --save_dir <dir> --use_seq --K 6 --enable_pred
+"""
 import os
-import torch
-import numpy as np
-from torch.utils.data import DataLoader
-from tqdm import tqdm
-import matplotlib.pyplot as plt
-from models.network_swinir_multi import SwinIRMulti
-from models.network_swinir_multi_enhanced import SwinIRMultiEnhanced
-from models.network_swinir_hybrid import SwinIRHybrid
-from models.network_swinir_fuse import SwinIRFuse
-from datasets.h5_dataset import MultiTaskDataset
-import pandas as pd
-import h5py
-import argparse
-import torch.nn as nn
-import torch.nn.functional as F
-from skimage.metrics import structural_similarity as ssim
-from skimage.metrics import peak_signal_noise_ratio as psnr
-import random
 import sys
-import json
-import torch.serialization
-from argparse import Namespace
-# 添加项目根目录到Python路径
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(current_dir)
+
+print("="*60)
+print("WARNING: This script (evaluate_multi.py) is DEPRECATED.")
+print("Please use eval_seq.py instead for sequential model evaluation.")
+print("="*60)
+print("\nExample usage:")
+print("  python eval_seq.py --model_path <path> --data_path <path> --save_dir <dir> \\")
+print("       --use_seq --K 6 --enable_pred --upsampler nearest+conv")
+print("\nExiting...")
+sys.exit(1)
+
+# 以下代码已废弃，不再执行
+if False:
 
 
 def evaluate_model(model, dataloader, device):
