@@ -11,7 +11,6 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 
 from models.network_swinir_multi import SwinIRMulti
 from datasets.h5_dataset import generate_train_valid_test_dataset
@@ -244,19 +243,19 @@ def evaluate_model(model, test_loader, device, enable_pred=False, max_viz=10, sa
 
                     viz_samples.append(sample)
 
-    # 计算平均值
+    # 计算平均值（转换为 Python float 以避免 JSON 序列化问题）
     metrics = {
-        'SR_MSE_mean': np.mean(sr_mse_list),
-        'SR_PSNR_mean': np.mean(sr_psnr_list),
-        'SR_SSIM_mean': np.mean(sr_ssim_list),
-        'GSL_err_pix_mean': np.mean(gsl_err_pix_list),
-        'GSL_err_m_mean': np.mean(gsl_err_m_list),
+        'SR_MSE_mean': float(np.mean(sr_mse_list)) if len(sr_mse_list) > 0 else None,
+        'SR_PSNR_mean': float(np.mean(sr_psnr_list)) if len(sr_psnr_list) > 0 else None,
+        'SR_SSIM_mean': float(np.mean(sr_ssim_list)) if len(sr_ssim_list) > 0 else None,
+        'GSL_err_pix_mean': float(np.mean(gsl_err_pix_list)) if len(gsl_err_pix_list) > 0 else None,
+        'GSL_err_m_mean': float(np.mean(gsl_err_m_list)) if len(gsl_err_m_list) > 0 else None,
     }
 
     if enable_pred and len(pred_mse_list) > 0:
-        metrics['Pred_MSE_mean'] = np.mean(pred_mse_list)
-        metrics['Pred_PSNR_mean'] = np.mean(pred_psnr_list)
-        metrics['Pred_SSIM_mean'] = np.mean(pred_ssim_list)
+        metrics['Pred_MSE_mean'] = float(np.mean(pred_mse_list))
+        metrics['Pred_PSNR_mean'] = float(np.mean(pred_psnr_list))
+        metrics['Pred_SSIM_mean'] = float(np.mean(pred_ssim_list))
 
     # 保存可视化
     if save_dir and len(viz_samples) > 0:
@@ -473,15 +472,27 @@ def main():
 
     # 保存指标
     metrics_path = os.path.join(args.save_dir, "test_metrics.json")
+
+    def _json_default(o):
+        """JSON 序列化默认处理函数，用于处理 numpy 类型"""
+        if isinstance(o, (np.floating,)):
+            return float(o)
+        if isinstance(o, (np.integer,)):
+            return int(o)
+        return str(o)
+
     with open(metrics_path, 'w') as f:
-        json.dump(metrics, f, indent=4)
+        json.dump(metrics, f, indent=4, default=_json_default)
 
     # 打印结果
     print("\n" + "="*60)
     print("Evaluation Results:")
     print("="*60)
     for key, value in metrics.items():
-        print(f"{key}: {value:.6f}")
+        if value is not None:
+            print(f"{key}: {value:.6f}")
+        else:
+            print(f"{key}: None")
     print("="*60)
     print(f"\nResults saved to: {metrics_path}")
     if args.max_viz > 0:
