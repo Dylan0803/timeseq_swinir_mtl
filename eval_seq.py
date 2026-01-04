@@ -1,6 +1,6 @@
 """
-Ê±ĞòÄ£ĞÍÆÀ¹À½Å±¾ - ×¨ÃÅÓÃÓÚÆÀ¹À SwinIRMulti Ê±ĞòÄ£ĞÍ
-Ö§³Ö SR@t, Pred@t+1, GSL Èı¸öÈÎÎñµÄÆÀ¹À
+æ—¶åºæ¨¡å‹è¯„ä¼°è„šæœ¬ - ä¸“é—¨ç”¨äºè¯„ä¼° SwinIRMulti æ—¶åºæ¨¡å‹
+æ”¯æŒ SR@t, Pred@t+1, GSL ä¸‰ä¸ªä»»åŠ¡çš„è¯„ä¼°
 """
 import os
 import json
@@ -19,14 +19,14 @@ from datasets.h5_dataset import generate_train_valid_test_dataset
 
 def calculate_psnr(img1, img2, data_range=1.0):
     """
-    ¼ÆËã PSNR (Peak Signal-to-Noise Ratio)
+    è®¡ç®— PSNR (Peak Signal-to-Noise Ratio)
 
-    ²ÎÊı:
-        img1, img2: torch.Tensor, shape (B, C, H, W) »ò (C, H, W) »ò (H, W)
-        data_range: Êı¾İ·¶Î§£¬Ä¬ÈÏ 1.0
+    å‚æ•°:
+        img1, img2: torch.Tensor, shape (B, C, H, W) æˆ– (C, H, W) æˆ– (H, W)
+        data_range: æ•°æ®èŒƒå›´ï¼Œé»˜è®¤ 1.0
 
-    ·µ»Ø:
-        float: PSNR Öµ
+    è¿”å›:
+        float: PSNR å€¼
     """
     mse = torch.mean((img1 - img2) ** 2)
     if mse == 0:
@@ -37,17 +37,17 @@ def calculate_psnr(img1, img2, data_range=1.0):
 
 def calculate_ssim(img1, img2, data_range=1.0):
     """
-    ¼ÆËã SSIM (Structural Similarity Index)
-    ¼ò»¯°æ±¾£ºÊ¹ÓÃÈ«¾Ö¾ùÖµ¡¢·½²î¡¢Ğ­·½²î
+    è®¡ç®— SSIM (Structural Similarity Index)
+    ç®€åŒ–ç‰ˆæœ¬ï¼šä½¿ç”¨å…¨å±€å‡å€¼ã€æ–¹å·®ã€åæ–¹å·®
 
-    ²ÎÊı:
-        img1, img2: torch.Tensor, shape (B, C, H, W) »ò (C, H, W) »ò (H, W)
-        data_range: Êı¾İ·¶Î§£¬Ä¬ÈÏ 1.0
+    å‚æ•°:
+        img1, img2: torch.Tensor, shape (B, C, H, W) æˆ– (C, H, W) æˆ– (H, W)
+        data_range: æ•°æ®èŒƒå›´ï¼Œé»˜è®¤ 1.0
 
-    ·µ»Ø:
-        float: SSIM Öµ
+    è¿”å›:
+        float: SSIM å€¼
     """
-    # È·±£ÊÇ 4D tensor (B, C, H, W)
+    # ç¡®ä¿æ˜¯ 4D tensor (B, C, H, W)
     if img1.dim() == 2:
         img1 = img1.unsqueeze(0).unsqueeze(0)
         img2 = img2.unsqueeze(0).unsqueeze(0)
@@ -55,11 +55,11 @@ def calculate_ssim(img1, img2, data_range=1.0):
         img1 = img1.unsqueeze(0)
         img2 = img2.unsqueeze(0)
 
-    # Õ¹Æ½Îª (B, C*H*W)
+    # å±•å¹³ä¸º (B, C*H*W)
     img1_flat = img1.view(img1.shape[0], -1)
     img2_flat = img2.view(img2.shape[0], -1)
 
-    # ¼ÆËã¾ùÖµºÍ·½²î
+    # è®¡ç®—å‡å€¼å’Œæ–¹å·®
     mu1 = torch.mean(img1_flat, dim=1)
     mu2 = torch.mean(img2_flat, dim=1)
 
@@ -68,7 +68,7 @@ def calculate_ssim(img1, img2, data_range=1.0):
     sigma12 = torch.mean((img1_flat - mu1.unsqueeze(1)) *
                          (img2_flat - mu2.unsqueeze(1)), dim=1)
 
-    # SSIM ¹«Ê½
+    # SSIM å…¬å¼
     c1 = (0.01 * data_range) ** 2
     c2 = (0.03 * data_range) ** 2
 
@@ -80,20 +80,20 @@ def calculate_ssim(img1, img2, data_range=1.0):
 
 def load_checkpoint(model, checkpoint_path, device):
     """
-    ¼ÓÔØ checkpoint£¬¼æÈİ¶àÖÖ¸ñÊ½
+    åŠ è½½ checkpointï¼Œå…¼å®¹å¤šç§æ ¼å¼
 
-    ²ÎÊı:
-        model: Ä£ĞÍÊµÀı
-        checkpoint_path: checkpoint ÎÄ¼şÂ·¾¶
-        device: Éè±¸
+    å‚æ•°:
+        model: æ¨¡å‹å®ä¾‹
+        checkpoint_path: checkpoint æ–‡ä»¶è·¯å¾„
+        device: è®¾å¤‡
 
-    ·µ»Ø:
-        dict: ¼ÓÔØµÄ checkpoint ĞÅÏ¢£¨Èç¹ûÓĞ£©
+    è¿”å›:
+        dict: åŠ è½½çš„ checkpoint ä¿¡æ¯ï¼ˆå¦‚æœæœ‰ï¼‰
     """
     print(f"Loading checkpoint from {checkpoint_path}")
     ckpt = torch.load(checkpoint_path, map_location=device)
 
-    # ³¢ÊÔ¶àÖÖ¿ÉÄÜµÄ key
+    # å°è¯•å¤šç§å¯èƒ½çš„ key
     state_dict = None
     if isinstance(ckpt, dict):
         if 'model_state_dict' in ckpt:
@@ -103,15 +103,15 @@ def load_checkpoint(model, checkpoint_path, device):
         elif 'model' in ckpt:
             state_dict = ckpt['model']
         else:
-            # ¼ÙÉèÕû¸ö dict ¾ÍÊÇ state_dict
+            # å‡è®¾æ•´ä¸ª dict å°±æ˜¯ state_dict
             state_dict = ckpt
     else:
         state_dict = ckpt
 
-    # Ê¹ÓÃ strict=False ÒÔ¼æÈİÈ±Ê§µÄ¼ü£¨ÈçĞÂÔöµÄ temporal_fc£©
+    # ä½¿ç”¨ strict=False ä»¥å…¼å®¹ç¼ºå¤±çš„é”®ï¼ˆå¦‚æ–°å¢çš„ temporal_fcï¼‰
     result = model.load_state_dict(state_dict, strict=False)
 
-    # ´òÓ¡È±Ê§ºÍÒâÍâµÄ¼ü£¨Ö»ÏÔÊ¾Ç°10¸ö£©
+    # æ‰“å°ç¼ºå¤±å’Œæ„å¤–çš„é”®ï¼ˆåªæ˜¾ç¤ºå‰10ä¸ªï¼‰
     if result.missing_keys:
         print(f"Missing keys (showing first 10): {result.missing_keys[:10]}")
         if len(result.missing_keys) > 10:
@@ -129,22 +129,22 @@ def load_checkpoint(model, checkpoint_path, device):
 
 def evaluate_model(model, test_loader, device, enable_pred=False, max_viz=10, save_dir=None):
     """
-    ÆÀ¹ÀÄ£ĞÍĞÔÄÜ
+    è¯„ä¼°æ¨¡å‹æ€§èƒ½
 
-    ²ÎÊı:
-        model: ÑµÁ·ºÃµÄÄ£ĞÍ
-        test_loader: ²âÊÔÊı¾İ¼ÓÔØÆ÷
-        device: Éè±¸
-        enable_pred: ÊÇ·ñÆÀ¹À Pred@t+1 ÈÎÎñ
-        max_viz: ×î¶à±£´æ¶àÉÙ¸ö¿ÉÊÓ»¯Ñù±¾
-        save_dir: ±£´æÄ¿Â¼
+    å‚æ•°:
+        model: è®­ç»ƒå¥½çš„æ¨¡å‹
+        test_loader: æµ‹è¯•æ•°æ®åŠ è½½å™¨
+        device: è®¾å¤‡
+        enable_pred: æ˜¯å¦è¯„ä¼° Pred@t+1 ä»»åŠ¡
+        max_viz: æœ€å¤šä¿å­˜å¤šå°‘ä¸ªå¯è§†åŒ–æ ·æœ¬
+        save_dir: ä¿å­˜ç›®å½•
 
-    ·µ»Ø:
-        dict: °üº¬¸÷ÏîÆÀ¹ÀÖ¸±êµÄ×Öµä
+    è¿”å›:
+        dict: åŒ…å«å„é¡¹è¯„ä¼°æŒ‡æ ‡çš„å­—å…¸
     """
     model.eval()
 
-    # Ö¸±êÁĞ±í
+    # æŒ‡æ ‡åˆ—è¡¨
     sr_mse_list = []
     sr_psnr_list = []
     sr_ssim_list = []
@@ -156,29 +156,29 @@ def evaluate_model(model, test_loader, device, enable_pred=False, max_viz=10, sa
     gsl_err_pix_list = []
     gsl_err_m_list = []
 
-    # ¿ÉÊÓ»¯Êı¾İ
+    # å¯è§†åŒ–æ•°æ®
     viz_samples = []
 
     with torch.no_grad():
         for batch_idx, batch in enumerate(tqdm(test_loader, desc="Evaluating")):
-            # »ñÈ¡Êı¾İ
+            # è·å–æ•°æ®
             if 'lr_seq' in batch:
-                # Ê±ĞòÄ£Ê½
+                # æ—¶åºæ¨¡å¼
                 inp = batch['lr_seq'].to(device)  # (B, K, 1, H, W)
                 hr_t = batch['hr_t'].to(device)  # (B, 1, H_hr, W_hr)
-                hr_tp1 = batch.get('hr_tp1', None)  # (B, 1, H_hr, W_hr) »ò None
+                hr_tp1 = batch.get('hr_tp1', None)  # (B, 1, H_hr, W_hr) æˆ– None
                 source_pos = batch['source_pos'].to(device)  # (B, 2)
             else:
-                # µ¥Ö¡Ä£Ê½£¨¼æÈİ£©
+                # å•å¸§æ¨¡å¼ï¼ˆå…¼å®¹ï¼‰
                 inp = batch['lr'].to(device)  # (B, 1, H, W)
                 hr_t = batch['hr'].to(device)  # (B, 1, H_hr, W_hr)
                 hr_tp1 = None
                 source_pos = batch['source_pos'].to(device)  # (B, 2)
 
-            # Ä£ĞÍÍÆÀí
+            # æ¨¡å‹æ¨ç†
             sr_out, gsl_out, pred_out = model(inp)
 
-            # ¼ÆËã SR@t Ö¸±ê
+            # è®¡ç®— SR@t æŒ‡æ ‡
             for i in range(sr_out.size(0)):
                 # MSE
                 mse = F.mse_loss(sr_out[i], hr_t[i])
@@ -192,7 +192,7 @@ def evaluate_model(model, test_loader, device, enable_pred=False, max_viz=10, sa
                 ssim = calculate_ssim(sr_out[i], hr_t[i], data_range=1.0)
                 sr_ssim_list.append(ssim)
 
-            # ¼ÆËã Pred@t+1 Ö¸±ê£¨Èç¹ûÆôÓÃÇÒ´æÔÚ hr_tp1£©
+            # è®¡ç®— Pred@t+1 æŒ‡æ ‡ï¼ˆå¦‚æœå¯ç”¨ä¸”å­˜åœ¨ hr_tp1ï¼‰
             if enable_pred and hr_tp1 is not None:
                 for i in range(pred_out.size(0)):
                     # MSE
@@ -209,28 +209,28 @@ def evaluate_model(model, test_loader, device, enable_pred=False, max_viz=10, sa
                         pred_out[i], hr_tp1[i], data_range=1.0)
                     pred_ssim_list.append(ssim)
 
-            # ¼ÆËã GSL Ö¸±ê
-            # ·´¹éÒ»»¯×ø±ê£¨³ËÒÔ 95£©
+            # è®¡ç®— GSL æŒ‡æ ‡
+            # åå½’ä¸€åŒ–åæ ‡ï¼ˆä¹˜ä»¥ 95ï¼‰
             true_pos = source_pos * 95.0  # (B, 2)
             pred_pos = gsl_out * 95.0  # (B, 2)
 
-            # ¼ÆËãÏñËØ¾àÀë
+            # è®¡ç®—åƒç´ è·ç¦»
             dist_pix = torch.sqrt(
                 torch.sum((pred_pos - true_pos) ** 2, dim=1))  # (B,)
             gsl_err_pix_list.extend(dist_pix.cpu().numpy())
 
-            # ×ª»»ÎªÃ×£¨³ıÒÔ 10£©
+            # è½¬æ¢ä¸ºç±³ï¼ˆé™¤ä»¥ 10ï¼‰
             dist_m = dist_pix / 10.0
             gsl_err_m_list.extend(dist_m.cpu().numpy())
 
-            # ±£´æ¿ÉÊÓ»¯Ñù±¾
+            # ä¿å­˜å¯è§†åŒ–æ ·æœ¬
             if batch_idx < max_viz:
                 for i in range(min(sr_out.size(0), max_viz - len(viz_samples))):
                     if len(viz_samples) >= max_viz:
                         break
 
                     sample = {
-                        # ×îºóÒ»Ö¡ LR
+                        # æœ€åä¸€å¸§ LR
                         'lr_last': inp[i, -1].cpu() if inp.dim() == 5 else inp[i].cpu(),
                         'hr_t': hr_t[i].cpu(),
                         'sr_t': sr_out[i].cpu(),
@@ -244,7 +244,7 @@ def evaluate_model(model, test_loader, device, enable_pred=False, max_viz=10, sa
 
                     viz_samples.append(sample)
 
-    # ¼ÆËãÆ½¾ùÖµ
+    # è®¡ç®—å¹³å‡å€¼
     metrics = {
         'SR_MSE_mean': np.mean(sr_mse_list),
         'SR_PSNR_mean': np.mean(sr_psnr_list),
@@ -258,7 +258,7 @@ def evaluate_model(model, test_loader, device, enable_pred=False, max_viz=10, sa
         metrics['Pred_PSNR_mean'] = np.mean(pred_psnr_list)
         metrics['Pred_SSIM_mean'] = np.mean(pred_ssim_list)
 
-    # ±£´æ¿ÉÊÓ»¯
+    # ä¿å­˜å¯è§†åŒ–
     if save_dir and len(viz_samples) > 0:
         viz_dir = os.path.join(save_dir, 'viz')
         os.makedirs(viz_dir, exist_ok=True)
@@ -271,15 +271,15 @@ def evaluate_model(model, test_loader, device, enable_pred=False, max_viz=10, sa
 
 def save_visualization(sample, idx, save_dir, enable_pred):
     """
-    ±£´æ¿ÉÊÓ»¯Í¼Ïñ
+    ä¿å­˜å¯è§†åŒ–å›¾åƒ
 
-    ²ÎÊı:
-        sample: Ñù±¾Êı¾İ×Öµä
-        idx: Ñù±¾Ë÷Òı
-        save_dir: ±£´æÄ¿Â¼
-        enable_pred: ÊÇ·ñ°üº¬ Pred@t+1 ¿ÉÊÓ»¯
+    å‚æ•°:
+        sample: æ ·æœ¬æ•°æ®å­—å…¸
+        idx: æ ·æœ¬ç´¢å¼•
+        save_dir: ä¿å­˜ç›®å½•
+        enable_pred: æ˜¯å¦åŒ…å« Pred@t+1 å¯è§†åŒ–
     """
-    # ×ª»»Îª numpy ²¢È¥³ıÍ¨µÀÎ¬¶È£¨Èç¹ûÊÇµ¥Í¨µÀ£©
+    # è½¬æ¢ä¸º numpy å¹¶å»é™¤é€šé“ç»´åº¦ï¼ˆå¦‚æœæ˜¯å•é€šé“ï¼‰
     def to_numpy(tensor):
         if tensor.dim() == 3 and tensor.shape[0] == 1:
             return tensor.squeeze(0).numpy()
@@ -292,10 +292,10 @@ def save_visualization(sample, idx, save_dir, enable_pred):
     hr_t = to_numpy(sample['hr_t'])
     sr_t = to_numpy(sample['sr_t'])
 
-    # ¼ÆËã²îÒìÍ¼
+    # è®¡ç®—å·®å¼‚å›¾
     diff_t = np.abs(hr_t - sr_t)
 
-    # È·¶¨×ÓÍ¼ÊıÁ¿
+    # ç¡®å®šå­å›¾æ•°é‡
     n_cols = 4 if enable_pred and 'hr_tp1' in sample else 4
     n_rows = 2 if enable_pred and 'hr_tp1' in sample else 1
 
@@ -303,7 +303,7 @@ def save_visualization(sample, idx, save_dir, enable_pred):
     if n_rows == 1:
         axes = axes.reshape(1, -1)
 
-    # µÚÒ»ĞĞ£ºSR@t
+    # ç¬¬ä¸€è¡Œï¼šSR@t
     ax = axes[0, 0]
     ax.imshow(lr_last, cmap='viridis', vmin=0, vmax=1)
     ax.set_title('LR (last frame)')
@@ -318,10 +318,10 @@ def save_visualization(sample, idx, save_dir, enable_pred):
     ax = axes[0, 2]
     im = ax.imshow(sr_t, cmap='viridis', vmin=0, vmax=1)
     ax.set_title('SR_t (Predicted)')
-    # ±ê×¢Ğ¹Â©Ô´Î»ÖÃ£¨×ø±êÒÑ¾­ÊÇÏñËØ×ø±ê£¬Ö±½ÓÊ¹ÓÃ£©
-    true_pos = sample['gsl_true']  # (2,) ÒÑ¾­ÊÇÏñËØ×ø±ê
-    pred_pos = sample['gsl_pred']  # (2,) ÒÑ¾­ÊÇÏñËØ×ø±ê
-    # ×¢Òâ£ºimshow µÄ×ø±êÏµÍ³ÊÇ (y, x)£¬ËùÒÔĞèÒª½»»»
+    # æ ‡æ³¨æ³„æ¼æºä½ç½®ï¼ˆåæ ‡å·²ç»æ˜¯åƒç´ åæ ‡ï¼Œç›´æ¥ä½¿ç”¨ï¼‰
+    true_pos = sample['gsl_true']  # (2,) å·²ç»æ˜¯åƒç´ åæ ‡
+    pred_pos = sample['gsl_pred']  # (2,) å·²ç»æ˜¯åƒç´ åæ ‡
+    # æ³¨æ„ï¼šimshow çš„åæ ‡ç³»ç»Ÿæ˜¯ (y, x)ï¼Œæ‰€ä»¥éœ€è¦äº¤æ¢
     ax.plot(true_pos[1], true_pos[0], 'r*', markersize=15, label='True Source')
     ax.plot(pred_pos[1], pred_pos[0], 'g*', markersize=15, label='Pred Source')
     ax.legend(loc='upper right', fontsize=8)
@@ -334,14 +334,14 @@ def save_visualization(sample, idx, save_dir, enable_pred):
     ax.axis('off')
     plt.colorbar(im, ax=ax, fraction=0.046)
 
-    # µÚ¶şĞĞ£ºPred@t+1£¨Èç¹ûÆôÓÃ£©
+    # ç¬¬äºŒè¡Œï¼šPred@t+1ï¼ˆå¦‚æœå¯ç”¨ï¼‰
     if enable_pred and 'hr_tp1' in sample:
         hr_tp1 = to_numpy(sample['hr_tp1'])
         pred_tp1 = to_numpy(sample['pred_tp1'])
         diff_tp1 = np.abs(hr_tp1 - pred_tp1)
 
         ax = axes[1, 0]
-        ax.axis('off')  # Áô¿Õ
+        ax.axis('off')  # ç•™ç©º
 
         ax = axes[1, 1]
         im = ax.imshow(hr_tp1, cmap='viridis', vmin=0, vmax=1)
@@ -371,7 +371,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description="Evaluate SwinIRMulti Sequential Model")
 
-    # ±ØĞè²ÎÊı
+    # å¿…éœ€å‚æ•°
     parser.add_argument("--model_path", type=str, required=True,
                         help="Path to model checkpoint")
     parser.add_argument("--data_path", type=str, required=True,
@@ -379,12 +379,12 @@ def parse_args():
     parser.add_argument("--save_dir", type=str, required=True,
                         help="Directory to save evaluation results")
 
-    # Ä£ĞÍ²ÎÊı
+    # æ¨¡å‹å‚æ•°
     parser.add_argument("--upsampler", type=str, default="nearest+conv",
                         choices=["nearest+conv", "pixelshuffle"],
                         help="Upsampler type")
 
-    # Êı¾İ²ÎÊı
+    # æ•°æ®å‚æ•°
     parser.add_argument("--use_seq", action="store_true",
                         help="Use sequential dataset")
     parser.add_argument("--K", type=int, default=6,
@@ -394,13 +394,13 @@ def parse_args():
     parser.add_argument("--num_workers", type=int, default=0,
                         help="Number of data loading workers")
 
-    # ÆÀ¹À²ÎÊı
+    # è¯„ä¼°å‚æ•°
     parser.add_argument("--enable_pred", action="store_true",
                         help="Enable Pred@t+1 evaluation")
     parser.add_argument("--max_viz", type=int, default=10,
                         help="Maximum number of visualization samples to save")
 
-    # Éè±¸
+    # è®¾å¤‡
     parser.add_argument("--device", type=str, default="cuda",
                         choices=["cuda", "cpu"],
                         help="Device to use")
@@ -411,15 +411,15 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # ´´½¨±£´æÄ¿Â¼
+    # åˆ›å»ºä¿å­˜ç›®å½•
     os.makedirs(args.save_dir, exist_ok=True)
 
-    # Éè±¸
+    # è®¾å¤‡
     device = torch.device(args.device if torch.cuda.is_available()
                           and args.device == "cuda" else "cpu")
     print(f"Using device: {device}")
 
-    # ¼ÓÔØÊı¾İ¼¯
+    # åŠ è½½æ•°æ®é›†
     print("Loading test dataset...")
     _, _, test_set = generate_train_valid_test_dataset(
         args.data_path,
@@ -441,7 +441,7 @@ def main():
 
     print(f"Test set size: {len(test_set)}")
 
-    # ´´½¨Ä£ĞÍ
+    # åˆ›å»ºæ¨¡å‹
     print("Creating model...")
     model = SwinIRMulti(
         img_size=16,
@@ -456,11 +456,11 @@ def main():
         mlp_ratio=2.0,
     )
 
-    # ¼ÓÔØÈ¨ÖØ
+    # åŠ è½½æƒé‡
     load_checkpoint(model, args.model_path, device)
     model = model.to(device)
 
-    # ÆÀ¹À
+    # è¯„ä¼°
     print("Evaluating model...")
     metrics = evaluate_model(
         model,
@@ -471,12 +471,12 @@ def main():
         save_dir=args.save_dir
     )
 
-    # ±£´æÖ¸±ê
+    # ä¿å­˜æŒ‡æ ‡
     metrics_path = os.path.join(args.save_dir, "test_metrics.json")
     with open(metrics_path, 'w') as f:
         json.dump(metrics, f, indent=4)
 
-    # ´òÓ¡½á¹û
+    # æ‰“å°ç»“æœ
     print("\n" + "="*60)
     print("Evaluation Results:")
     print("="*60)
