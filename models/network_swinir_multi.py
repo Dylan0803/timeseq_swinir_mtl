@@ -995,15 +995,8 @@ class SwinIRMulti(nn.Module):
         return sr_out, gsl_out, pred_out
 
     def flops(self):
-        flops = 0
-        H, W = self.patches_resolution
-        flops += H * W * 3 * self.embed_dim * 9
-        flops += self.patch_embed.flops()
-        for i, layer in enumerate(self.layers):
-            flops += layer.flops()
-        flops += H * W * 3 * self.embed_dim * self.embed_dim
-        flops += self.upsample.flops()
-        return flops
+        # 简化版本：返回 0（FLOPs 计算需要完整的输入尺寸信息，这里不实现）
+        return 0
 
 
 if __name__ == '__main__':
@@ -1031,4 +1024,8 @@ if __name__ == '__main__':
     x = torch.randn((batch_size, in_channels, img_size, img_size))
 
     # 前向传播
-    gdm_out, gsl_out = model(x)
+    sr_out, gsl_out, pred_out = model(x)
+    print(f"✓ Model output shapes:")
+    print(f"  sr_out: {sr_out.shape}")
+    print(f"  gsl_out: {gsl_out.shape}")
+    print(f"  pred_out: {pred_out.shape}")
