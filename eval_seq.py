@@ -210,8 +210,8 @@ def evaluate_model(model, test_loader, device, enable_pred=False, max_viz=10, sa
 
             # 计算 GSL 指标
             # 反归一化坐标（乘以 95）
-            true_pos = source_pos * 95.0  # (B, 2)
-            pred_pos = gsl_out * 95.0  # (B, 2)
+            true_pos = source_pos * 95.0  # (B, 2)  (x, y) 像素坐标
+            pred_pos = gsl_out * 95.0  # (B, 2)  (x, y) 像素坐标
 
             # 计算像素距离
             dist_pix = torch.sqrt(
@@ -233,8 +233,8 @@ def evaluate_model(model, test_loader, device, enable_pred=False, max_viz=10, sa
                         'lr_last': inp[i, -1].cpu() if inp.dim() == 5 else inp[i].cpu(),
                         'hr_t': hr_t[i].cpu(),
                         'sr_t': sr_out[i].cpu(),
-                        'gsl_true': true_pos[i].cpu().numpy(),
-                        'gsl_pred': pred_pos[i].cpu().numpy(),
+                        'gsl_true': true_pos[i].cpu().numpy(),  # (x, y)
+                        'gsl_pred': pred_pos[i].cpu().numpy(),  # (x, y)
                     }
 
                     if enable_pred and hr_tp1 is not None:
@@ -304,31 +304,41 @@ def save_visualization(sample, idx, save_dir, enable_pred):
 
     # 第一行：SR@t
     ax = axes[0, 0]
-    ax.imshow(lr_last, cmap='viridis', vmin=0, vmax=1)
+    ax.imshow(lr_last, cmap='viridis', vmin=0, vmax=1, origin='upper')
     ax.set_title('LR (last frame)')
     ax.axis('off')
 
     ax = axes[0, 1]
-    im = ax.imshow(hr_t, cmap='viridis', vmin=0, vmax=1)
+    im = ax.imshow(hr_t, cmap='viridis', vmin=0, vmax=1, origin='upper')
     ax.set_title('HR_t (Ground Truth)')
     ax.axis('off')
     plt.colorbar(im, ax=ax, fraction=0.046)
 
     ax = axes[0, 2]
-    im = ax.imshow(sr_t, cmap='viridis', vmin=0, vmax=1)
+    im = ax.imshow(sr_t, cmap='viridis', vmin=0, vmax=1, origin='upper')
     ax.set_title('SR_t (Predicted)')
-    # 标注泄漏源位置（坐标已经是像素坐标，直接使用）
-    true_pos = sample['gsl_true']  # (2,) 已经是像素坐标
-    pred_pos = sample['gsl_pred']  # (2,) 已经是像素坐标
-    # 注意：imshow 的坐标系统是 (y, x)，所以需要交换
-    ax.plot(true_pos[1], true_pos[0], 'r*', markersize=15, label='True Source')
-    ax.plot(pred_pos[1], pred_pos[0], 'g*', markersize=15, label='Pred Source')
+
+    # 标注泄漏源位置：
+    # 约定：sample['gsl_true']/['gsl_pred'] 为 (x, y) 像素坐标，其中 x=col, y=row
+    # matplotlib 的 plot(x, y) 也是 (x=col, y=row)，因此这里【不需要交换】。
+    true_pos = sample['gsl_true']  # (2,) -> (x, y)
+    pred_pos = sample['gsl_pred']  # (2,) -> (x, y)
+
+    ax.plot(true_pos[0], true_pos[1], 'r*', markersize=15, label='True Source')
+    ax.plot(pred_pos[0], pred_pos[1], 'g*', markersize=15, label='Pred Source')
+
+    # 可选：标注数值，方便快速核对
+    ax.text(true_pos[0] + 1, true_pos[1] + 1,
+            f"T({true_pos[0]:.1f},{true_pos[1]:.1f})", color='r', fontsize=7)
+    ax.text(pred_pos[0] + 1, pred_pos[1] + 1,
+            f"P({pred_pos[0]:.1f},{pred_pos[1]:.1f})", color='g', fontsize=7)
+
     ax.legend(loc='upper right', fontsize=8)
     ax.axis('off')
     plt.colorbar(im, ax=ax, fraction=0.046)
 
     ax = axes[0, 3]
-    im = ax.imshow(diff_t, cmap='hot', vmin=0, vmax=0.5)
+    im = ax.imshow(diff_t, cmap='hot', vmin=0, vmax=0.5, origin='upper')
     ax.set_title('Diff (HR_t - SR_t)')
     ax.axis('off')
     plt.colorbar(im, ax=ax, fraction=0.046)
@@ -343,19 +353,20 @@ def save_visualization(sample, idx, save_dir, enable_pred):
         ax.axis('off')  # 留空
 
         ax = axes[1, 1]
-        im = ax.imshow(hr_tp1, cmap='viridis', vmin=0, vmax=1)
+        im = ax.imshow(hr_tp1, cmap='viridis', vmin=0, vmax=1, origin='upper')
         ax.set_title('HR_{t+1} (Ground Truth)')
         ax.axis('off')
         plt.colorbar(im, ax=ax, fraction=0.046)
 
         ax = axes[1, 2]
-        im = ax.imshow(pred_tp1, cmap='viridis', vmin=0, vmax=1)
+        im = ax.imshow(pred_tp1, cmap='viridis',
+                       vmin=0, vmax=1, origin='upper')
         ax.set_title('Pred_{t+1} (Predicted)')
         ax.axis('off')
         plt.colorbar(im, ax=ax, fraction=0.046)
 
         ax = axes[1, 3]
-        im = ax.imshow(diff_tp1, cmap='hot', vmin=0, vmax=0.5)
+        im = ax.imshow(diff_tp1, cmap='hot', vmin=0, vmax=0.5, origin='upper')
         ax.set_title('Diff (HR_{t+1} - Pred_{t+1})')
         ax.axis('off')
         plt.colorbar(im, ax=ax, fraction=0.046)
