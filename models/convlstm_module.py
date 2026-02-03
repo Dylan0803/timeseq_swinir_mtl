@@ -1,12 +1,12 @@
-import torch
+ï»¿import torch
 import torch.nn as nn
 
 
 class ConvLSTMCell(nn.Module):
     """
-    Ò»¸ö¼òµ¥µÄ ConvLSTM Cell ÊµÏÖ¡£
-    ÊäÈë: x_t: (B, C_in, H, W), h_{t-1}, c_{t-1}: (B, C_hidden, H, W)
-    Êä³ö: h_t, c_t
+    ä¸€ä¸ªç®€å•çš„ ConvLSTM Cell å®ç°ã€‚
+    è¾“å…¥: x_t: (B, C_in, H, W), h_{t-1}, c_{t-1}: (B, C_hidden, H, W)
+    è¾“å‡º: h_t, c_t
     """
 
     def __init__(self, input_dim, hidden_dim, kernel_size, bias=True):
@@ -55,11 +55,11 @@ class ConvLSTMCell(nn.Module):
 
 class ConvLSTM(nn.Module):
     """
-    µ¥²ã ConvLSTM£¬ÓÃÓÚ´¦ÀíÕû¶ÎĞòÁĞ¡£
-    ÊäÈë: x_seq: (B, T, C_in, H, W)
-    Êä³ö:
-        h_seq: (B, T, C_hidden, H, W) - Ã¿¸öÊ±¼ä²½µÄÒş²Ø×´Ì¬
-        (h_T, c_T): ×îºóÒ»¸öÊ±¼ä²½µÄÒş²Ø/¼ÇÒä×´Ì¬
+    å•å±‚ ConvLSTMï¼Œç”¨äºå¤„ç†æ•´æ®µåºåˆ—ã€‚
+    è¾“å…¥: x_seq: (B, T, C_in, H, W)
+    è¾“å‡º:
+        h_seq: (B, T, C_hidden, H, W) - æ¯ä¸ªæ—¶é—´æ­¥çš„éšè—çŠ¶æ€
+        (h_T, c_T): æœ€åä¸€ä¸ªæ—¶é—´æ­¥çš„éšè—/è®°å¿†çŠ¶æ€
     """
 
     def __init__(self, input_dim, hidden_dim, kernel_size=(3, 3), bias=True):
