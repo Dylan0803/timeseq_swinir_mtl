@@ -5,6 +5,8 @@ import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 
+from .convlstm_module import ConvLSTM
+
 
 class Mlp(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
@@ -684,16 +686,22 @@ class SwinIRMulti(nn.Module):
         # 浅层特征提取
         self.conv_first = nn.Conv2d(in_chans, embed_dim, 3, 1, 1)
 
-        # 时序融合模块（Temporal Attention - 帧权重融合）
-        # 用于从每帧浅层特征提取 score，然后 softmax 得到权重
-        self.temporal_pool = nn.AdaptiveAvgPool2d(1)  # 全局平均池化
-        hidden_dim = max(1, embed_dim // 4)  # 确保至少为1
-        self.temporal_fc = nn.Sequential(
-            nn.Linear(embed_dim, hidden_dim),
-            nn.GELU(),
-            nn.Linear(hidden_dim, 1)
+        # ==== 时序融合模块：ConvLSTM ====
+        # ConvLSTM 接收来自 conv_first 的特征序列 feat_k: (B, K, embed_dim, H, W)
+        # 推荐设置：hidden_dim=48, kernel_size=(3, 3)
+        self.convlstm_hidden_dim = 48
+        self.convlstm = ConvLSTM(
+            input_dim=embed_dim,
+            hidden_dim=self.convlstm_hidden_dim,
+            kernel_size=(3, 3),
         )
-        self.debug_return_alpha = False  # 调试标志，默认不返回 alpha
+        # 如果 hidden_dim != embed_dim，则用 1x1 卷积投影回 embed_dim 维度
+        if self.convlstm_hidden_dim != embed_dim:
+            self.convlstm_proj = nn.Conv2d(
+                self.convlstm_hidden_dim, embed_dim, kernel_size=1, stride=1, padding=0
+            )
+        else:
+            self.convlstm_proj = nn.Identity()
 
         # 深层特征提取
         self.num_layers = len(depths)
@@ -864,42 +872,36 @@ class SwinIRMulti(nn.Module):
 
     def fuse_sequence(self, lr_seq):
         """
-        时序融合函数：使用帧权重融合 K 帧 LR 序列
+        时序融合函数：使用 ConvLSTM 融合 K 帧 LR 序列
 
         参数：
         lr_seq: (B, K, 1, H, W) - 历史 K 帧 LR 序列
 
         返回：
         fused: (B, embed_dim, H, W) - 融合后的特征
-        alpha: (B, K) - 帧权重（可选，用于调试）
+        alpha: None - 为了兼容旧接口，保留第二个返回值但不再使用
         """
         B, K, C, H, W = lr_seq.shape
-        # 对每帧做 conv_first 得到特征
-        # 将 (B, K, 1, H, W) 重塑为 (B*K, 1, H, W)
-        lr_seq_flat = lr_seq.view(B * K, C, H, W)
-        # 通过 conv_first 得到每帧特征 (B*K, embed_dim, H, W)
-        feat_k = self.conv_first(lr_seq_flat)  # (B*K, embed_dim, H, W)
 
-        # 计算每帧的 score
-        # 使用全局平均池化 + FC 得到 score
-        pooled = self.temporal_pool(feat_k)  # (B*K, embed_dim, 1, 1)
-        pooled = pooled.squeeze(-1).squeeze(-1)  # (B*K, embed_dim)
-        scores = self.temporal_fc(pooled)  # (B*K, 1)
-        scores = scores.view(B, K)  # (B, K)
-
-        # Softmax 得到权重 alpha
-        alpha = F.softmax(scores, dim=1)  # (B, K)
-
-        # 将 feat_k 重塑回 (B, K, embed_dim, H, W)
+        # 对每帧做 conv_first 得到浅层特征
+        lr_seq_flat = lr_seq.view(B * K, C, H, W)  # (B*K, 1, H, W)
+        feat_k = self.conv_first(lr_seq_flat)      # (B*K, embed_dim, H, W)
+        # (B, K, embed_dim, H, W)
         feat_k = feat_k.view(B, K, self.embed_dim, H, W)
 
-        # 加权融合：sum_k alpha[:,k] * feat_k[:,k]
-        # alpha: (B, K) -> (B, K, 1, 1, 1) 用于广播
-        # (B, K, 1, 1, 1)
-        alpha_expanded = alpha.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
-        fused = (feat_k * alpha_expanded).sum(dim=1)  # (B, embed_dim, H, W)
+        # 使用 ConvLSTM 处理时序特征
+        # h_seq: (B, K, convlstm_hidden_dim, H, W)
+        h_seq, (h_last, c_last) = self.convlstm(feat_k)
 
-        return fused, alpha
+        # 使用最后一帧的隐藏状态 h_n[-1] 作为融合结果
+        # 也可以直接使用 h_last，这里按照说明取 h_seq[:, -1]
+        fused = h_seq[:, -1]  # (B, convlstm_hidden_dim, H, W)
+
+        # 如果 hidden_dim != embed_dim，则投影回 embed_dim
+        fused = self.convlstm_proj(fused)  # (B, embed_dim, H, W)
+
+        # 为了与旧代码兼容，返回 (fused, None)
+        return fused, None
 
     def forward_features(self, x):
         x_size = (x.shape[2], x.shape[3])
