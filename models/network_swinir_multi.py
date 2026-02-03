@@ -929,9 +929,6 @@ class SwinIRMulti(nn.Module):
             orig_H, orig_W = H, W
             # 使用时序融合
             x0, alpha = self.fuse_sequence(x)  # x0: (B, embed_dim, H, W)
-            # 保存 alpha 用于调试（如果需要）
-            if self.debug_return_alpha:
-                self._last_alpha = alpha
         else:
             # 单帧输入: (B, 1, H, W)
             H, W = x.shape[2:]
