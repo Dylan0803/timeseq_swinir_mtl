@@ -163,16 +163,27 @@ def evaluate_model(model, test_loader, device, enable_pred=False, max_viz=10, sa
             # 获取数据
             if 'lr_seq' in batch:
                 # 时序模式
-                inp = batch['lr_seq'].to(device)  # (B, K, 1, H, W)
-                hr_t = batch['hr_t'].to(device)  # (B, 1, H_hr, W_hr)
+                inp = batch['lr_seq'].to(
+                    device, non_blocking=True)  # (B, K, 1, H, W)
+                # (B, 1, H_hr, W_hr)
+                hr_t = batch['hr_t'].to(device, non_blocking=True)
+
+                # ✅ 关键修复：hr_tp1 也必须搬到同一 device
                 hr_tp1 = batch.get('hr_tp1', None)  # (B, 1, H_hr, W_hr) 或 None
-                source_pos = batch['source_pos'].to(device)  # (B, 2)
+                if hr_tp1 is not None:
+                    hr_tp1 = hr_tp1.to(device, non_blocking=True)
+
+                source_pos = batch['source_pos'].to(
+                    device, non_blocking=True)  # (B, 2)
             else:
                 # 单帧模式（兼容）
-                inp = batch['lr'].to(device)  # (B, 1, H, W)
-                hr_t = batch['hr'].to(device)  # (B, 1, H_hr, W_hr)
+                inp = batch['lr'].to(
+                    device, non_blocking=True)      # (B, 1, H, W)
+                # (B, 1, H_hr, W_hr)
+                hr_t = batch['hr'].to(device, non_blocking=True)
                 hr_tp1 = None
-                source_pos = batch['source_pos'].to(device)  # (B, 2)
+                source_pos = batch['source_pos'].to(
+                    device, non_blocking=True)  # (B, 2)
 
             # 模型推理
             sr_out, gsl_out, pred_out = model(inp)
@@ -192,7 +203,7 @@ def evaluate_model(model, test_loader, device, enable_pred=False, max_viz=10, sa
                 sr_ssim_list.append(ssim)
 
             # 计算 Pred@t+1 指标（如果启用且存在 hr_tp1）
-            if enable_pred and hr_tp1 is not None:
+            if enable_pred and (hr_tp1 is not None):
                 for i in range(pred_out.size(0)):
                     # MSE
                     mse = F.mse_loss(pred_out[i], hr_tp1[i])
@@ -211,16 +222,16 @@ def evaluate_model(model, test_loader, device, enable_pred=False, max_viz=10, sa
             # 计算 GSL 指标
             # 反归一化坐标（乘以 95）
             true_pos = source_pos * 95.0  # (B, 2)  (x, y) 像素坐标
-            pred_pos = gsl_out * 95.0  # (B, 2)  (x, y) 像素坐标
+            pred_pos = gsl_out * 95.0     # (B, 2)  (x, y) 像素坐标
 
             # 计算像素距离
             dist_pix = torch.sqrt(
                 torch.sum((pred_pos - true_pos) ** 2, dim=1))  # (B,)
-            gsl_err_pix_list.extend(dist_pix.cpu().numpy())
+            gsl_err_pix_list.extend(dist_pix.detach().cpu().numpy())
 
             # 转换为米（除以 10）
             dist_m = dist_pix / 10.0
-            gsl_err_m_list.extend(dist_m.cpu().numpy())
+            gsl_err_m_list.extend(dist_m.detach().cpu().numpy())
 
             # 保存可视化样本
             if batch_idx < max_viz:
@@ -230,16 +241,18 @@ def evaluate_model(model, test_loader, device, enable_pred=False, max_viz=10, sa
 
                     sample = {
                         # 最后一帧 LR
-                        'lr_last': inp[i, -1].cpu() if inp.dim() == 5 else inp[i].cpu(),
-                        'hr_t': hr_t[i].cpu(),
-                        'sr_t': sr_out[i].cpu(),
-                        'gsl_true': true_pos[i].cpu().numpy(),  # (x, y)
-                        'gsl_pred': pred_pos[i].cpu().numpy(),  # (x, y)
+                        'lr_last': inp[i, -1].detach().cpu() if inp.dim() == 5 else inp[i].detach().cpu(),
+                        'hr_t': hr_t[i].detach().cpu(),
+                        'sr_t': sr_out[i].detach().cpu(),
+                        # (x, y)
+                        'gsl_true': true_pos[i].detach().cpu().numpy(),
+                        # (x, y)
+                        'gsl_pred': pred_pos[i].detach().cpu().numpy(),
                     }
 
-                    if enable_pred and hr_tp1 is not None:
-                        sample['hr_tp1'] = hr_tp1[i].cpu()
-                        sample['pred_tp1'] = pred_out[i].cpu()
+                    if enable_pred and (hr_tp1 is not None):
+                        sample['hr_tp1'] = hr_tp1[i].detach().cpu()
+                        sample['pred_tp1'] = pred_out[i].detach().cpu()
 
                     viz_samples.append(sample)
 
@@ -295,7 +308,7 @@ def save_visualization(sample, idx, save_dir, enable_pred):
     diff_t = np.abs(hr_t - sr_t)
 
     # 确定子图数量
-    n_cols = 4 if enable_pred and 'hr_tp1' in sample else 4
+    n_cols = 4
     n_rows = 2 if enable_pred and 'hr_tp1' in sample else 1
 
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(n_cols * 3, n_rows * 3))
@@ -496,15 +509,15 @@ def main():
         json.dump(metrics, f, indent=4, default=_json_default)
 
     # 打印结果
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Evaluation Results:")
-    print("="*60)
+    print("=" * 60)
     for key, value in metrics.items():
         if value is not None:
             print(f"{key}: {value:.6f}")
         else:
             print(f"{key}: None")
-    print("="*60)
+    print("=" * 60)
     print(f"\nResults saved to: {metrics_path}")
     if args.max_viz > 0:
         print(f"Visualizations saved to: {os.path.join(args.save_dir, 'viz')}")
