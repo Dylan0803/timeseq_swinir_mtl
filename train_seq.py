@@ -132,6 +132,8 @@ def parse_args():
                         help="use MultiTaskSeqDataset")
     parser.add_argument("--K", type=int, default=6,
                         help="history length K (for seq dataset)")
+    parser.add_argument("--convlstm_hidden_dim", type=int, default=48,
+                        help="hidden channels of ConvLSTM (temporal fusion)")
 
     # 训练
     parser.add_argument("--batch_size", type=int, default=64)
@@ -170,6 +172,7 @@ def create_model(args):
         embed_dim=60,
         num_heads=[6, 6, 6, 6],
         mlp_ratio=2.0,
+        convlstm_hidden_dim=args.convlstm_hidden_dim,
     )
     return model
 

@@ -667,7 +667,7 @@ class SwinIRMulti(nn.Module):
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
                  norm_layer=nn.LayerNorm, ape=False, patch_norm=True,
                  use_checkpoint=False, upscale=6, img_range=1., upsampler='nearest+conv',
-                 resi_connection='1conv'):
+                 resi_connection='1conv', convlstm_hidden_dim=48):
         super(SwinIRMulti, self).__init__()
 
         # 添加mean属性
@@ -688,8 +688,8 @@ class SwinIRMulti(nn.Module):
 
         # ==== 时序融合模块：ConvLSTM ====
         # ConvLSTM 接收来自 conv_first 的特征序列 feat_k: (B, K, embed_dim, H, W)
-        # 推荐设置：hidden_dim=48, kernel_size=(3, 3)
-        self.convlstm_hidden_dim = 48
+        # hidden_dim 支持通过命令行参数配置（默认 48）
+        self.convlstm_hidden_dim = convlstm_hidden_dim
         self.convlstm = ConvLSTM(
             input_dim=embed_dim,
             hidden_dim=self.convlstm_hidden_dim,
