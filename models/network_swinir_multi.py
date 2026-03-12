@@ -878,7 +878,7 @@ class SwinIRMulti(nn.Module):
         lr_seq: (B, K, 1, H, W) - 历史 K 帧 LR 序列
 
         返回：
-        fused: (B, embed_dim, H, W) - 融合后的特征
+        fused: (B, embed_dim, H, W) - ConvLSTM 提取的时序特征（最后一帧隐藏状态）
         alpha: None - 为了兼容旧接口，保留第二个返回值但不再使用
         """
         B, K, C, H, W = lr_seq.shape
@@ -893,8 +893,7 @@ class SwinIRMulti(nn.Module):
         # h_seq: (B, K, convlstm_hidden_dim, H, W)
         h_seq, (h_last, c_last) = self.convlstm(feat_k)
 
-        # 使用最后一帧的隐藏状态 h_n[-1] 作为融合结果
-        # 也可以直接使用 h_last，这里按照说明取 h_seq[:, -1]
+        # 使用最后一帧的隐藏状态 h_n[-1] 作为时序特征
         fused = h_seq[:, -1]  # (B, convlstm_hidden_dim, H, W)
 
         # 如果 hidden_dim != embed_dim，则投影回 embed_dim
@@ -927,17 +926,29 @@ class SwinIRMulti(nn.Module):
             B, K, C, H, W = x.shape
             # 记录原始尺寸（用于后续裁剪）
             orig_H, orig_W = H, W
-            # 使用时序融合
-            x0, alpha = self.fuse_sequence(x)  # x0: (B, embed_dim, H, W)
+
+            # temporal feature
+            temporal_feat, alpha = self.fuse_sequence(
+                x)  # (B, embed_dim, H, W)
+            temporal_feat = self.check_image_size(temporal_feat)
+
+            # current frame feature
+            current_frame = x[:, -1]  # (B, 1, H, W)
+            current_frame = self.check_image_size(current_frame)
+            current_feat = self.conv_first(
+                current_frame)  # (B, embed_dim, H', W')
+
+            # fusion
+            x0 = current_feat + temporal_feat  # (B, embed_dim, H', W')
         else:
             # 单帧输入: (B, 1, H, W)
             H, W = x.shape[2:]
             orig_H, orig_W = H, W
             x = self.check_image_size(x)
-            # 浅层特征提取
+            # 浅层特征提取（仅当前帧）
             x0 = self.conv_first(x)  # (B, embed_dim, H, W)
 
-        # 确保 x0 的尺寸符合 window_size 要求
+        # 确保 x0 的尺寸符合 window_size 要求（单帧路径已满足，这里主要是序列融合后的安全检查）
         x0 = self.check_image_size(x0)
 
         # 共享特征提取
